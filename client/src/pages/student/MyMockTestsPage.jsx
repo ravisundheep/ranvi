@@ -1,12 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { examService } from '../../services';
 import { ExamCard } from '../../components/exams/ExamCard';
-import { FileCheck2, Award, Clock, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { FileCheck2, Award, Clock, ArrowRight, CheckCircle2, Search, X } from 'lucide-react';
 
 export const MyMockTestsPage = () => {
   const [availableTests, setAvailableTests] = useState([]);
   const [pastAttempts, setPastAttempts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -95,20 +96,57 @@ export const MyMockTestsPage = () => {
 
       {/* Available Model Papers Grid */}
       <div className="space-y-4">
-        <h3 className="text-xl font-bold text-[#12356B] font-heading">
-          Available 10–20 Model Test Papers
-        </h3>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 className="text-xl font-bold text-[#12356B] font-heading">
+            Available 10–20 Model Test Papers
+          </h3>
+
+          <div className="relative min-w-[200px] sm:min-w-[260px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search available tests..."
+              className="w-full pl-8 pr-7 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+        </div>
 
         {loading ? (
           <div className="py-16 text-center">
             <div className="w-8 h-8 border-4 border-[#1769D2] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
             <p className="text-xs text-slate-500">Loading model papers...</p>
           </div>
-        ) : (
+        ) : availableTests.filter(
+            (t) =>
+              !searchQuery.trim() ||
+              t.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
+          ).length > 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {availableTests.map((test) => (
-              <ExamCard key={test._id} test={test} isUnlocked={true} />
-            ))}
+            {availableTests
+              .filter(
+                (t) =>
+                  !searchQuery.trim() ||
+                  t.title.toLowerCase().includes(searchQuery.trim().toLowerCase())
+              )
+              .map((test) => (
+                <ExamCard key={test._id} test={test} isUnlocked={true} />
+              ))}
+          </div>
+        ) : (
+          <div className="p-8 text-center bg-white rounded-3xl border border-slate-200">
+            <p className="text-xs text-slate-500">No mock tests found matching "{searchQuery}".</p>
           </div>
         )}
       </div>

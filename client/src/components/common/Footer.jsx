@@ -80,7 +80,7 @@ export const Footer = () => {
                 </Link>
               </li>
               <li>
-                <Link to="/bankers-path" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                <Link to="/bankers-path#pricing" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>Pricing</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>

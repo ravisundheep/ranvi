@@ -1,13 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { liveClassService, courseService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import { useRealtimeEvent } from '../../context/SocketContext';
 import { ZoomJoinButton } from '../../components/live/ZoomJoinButton';
-import { Video, Plus, Calendar, Clock, User, Ban, CheckCircle2, AlertCircle, Edit, Trash2 } from 'lucide-react';
+import { Video, Plus, Calendar, Clock, User, Ban, CheckCircle2, AlertCircle, Edit, Trash2, Search, X, Filter, RotateCcw } from 'lucide-react';
 
 export const AdminLiveClassesPage = () => {
   const [classes, setClasses] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingClassId, setEditingClassId] = useState(null);
@@ -141,6 +143,29 @@ export const AdminLiveClassesPage = () => {
     }
   };
 
+  const filteredClasses = useMemo(() => {
+    return classes.filter((cls) => {
+      if (statusFilter !== 'ALL' && cls.status !== statusFilter) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const title = (cls.title || '').toLowerCase();
+        const faculty = (cls.facultyName || '').toLowerCase();
+        const course = (cls.courseId?.title || '').toLowerCase();
+        const meetingId = (cls.zoomMeetingId || '').toLowerCase();
+
+        const matches =
+          title.includes(q) ||
+          faculty.includes(q) ||
+          course.includes(q) ||
+          meetingId.includes(q);
+
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [classes, statusFilter, searchQuery]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -154,10 +179,66 @@ export const AdminLiveClassesPage = () => {
         </div>
         <button
           onClick={handleOpenAdd}
-          className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md"
+          className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md cursor-pointer"
         >
           <Plus className="w-4 h-4" /> Schedule New Class
         </button>
+      </div>
+
+      {/* Filter & Search Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 font-bold bg-white text-slate-700 outline-none focus:border-[#1769D2]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="SCHEDULED">Scheduled</option>
+            <option value="LIVE">Live Now</option>
+            <option value="COMPLETED">Completed</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+
+          {/* Search Box */}
+          <div className="relative min-w-[200px] sm:min-w-[260px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search class, faculty, course..."
+              className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {(statusFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="text-xs font-bold text-rose-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" /> Reset
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs font-bold text-slate-500">
+          Showing <span className="text-[#12356B]">{filteredClasses.length}</span> of {classes.length} Classes
+        </div>
       </div>
 
       {/* Classes Table */}
@@ -175,7 +256,14 @@ export const AdminLiveClassesPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {classes.map((cls) => (
+              {filteredClasses.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    No live classes found matching your search and filter criteria.
+                  </td>
+                </tr>
+              )}
+              {filteredClasses.map((cls) => (
                 <tr key={cls._id} className="hover:bg-slate-50">
                   <td className="p-4 font-bold text-[#12356B]">
                     <div>{cls.title}</div>

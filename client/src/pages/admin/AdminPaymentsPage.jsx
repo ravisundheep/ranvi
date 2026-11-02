@@ -1,12 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { adminService, courseService } from '../../services';
 import { useToast } from '../../context/ToastContext';
-import { CreditCard, Plus, ShieldCheck, UserPlus, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Plus, ShieldCheck, UserPlus, CheckCircle2, Search, X, Filter, RotateCcw } from 'lucide-react';
 
 export const AdminPaymentsPage = () => {
   const [orders, setOrders] = useState([]);
   const [courses, setCourses] = useState([]);
   const [students, setStudents] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [showGrantModal, setShowGrantModal] = useState(false);
   const { success, error: toastError } = useToast();
@@ -64,6 +66,31 @@ export const AdminPaymentsPage = () => {
     }
   };
 
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (statusFilter !== 'ALL' && o.status !== statusFilter) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const studentName = (o.studentId?.name || '').toLowerCase();
+        const studentEmail = (o.studentId?.email || '').toLowerCase();
+        const receipt = (o.receiptNumber || '').toLowerCase();
+        const razorpayId = (o.razorpayOrderId || '').toLowerCase();
+        const programTitle = (o.itemId?.title || o.itemType || '').toLowerCase();
+
+        const matches =
+          studentName.includes(q) ||
+          studentEmail.includes(q) ||
+          receipt.includes(q) ||
+          razorpayId.includes(q) ||
+          programTitle.includes(q);
+
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [orders, statusFilter, searchQuery]);
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -77,10 +104,65 @@ export const AdminPaymentsPage = () => {
         </div>
         <button
           onClick={() => setShowGrantModal(true)}
-          className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md"
+          className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md cursor-pointer"
         >
           <UserPlus className="w-4 h-4" /> Grant Manual Access
         </button>
+      </div>
+
+      {/* Filter & Search Toolbar */}
+      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-1.5 rounded-xl border border-slate-200 font-bold bg-white text-slate-700 outline-none focus:border-[#1769D2]"
+          >
+            <option value="ALL">All Payment Statuses</option>
+            <option value="PAID">Paid / Verified</option>
+            <option value="CREATED">Created / Pending</option>
+            <option value="FAILED">Failed</option>
+          </select>
+
+          {/* Search Box */}
+          <div className="relative min-w-[200px] sm:min-w-[260px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search student, receipt, order ID..."
+              className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {(statusFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="text-xs font-bold text-rose-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" /> Reset
+            </button>
+          )}
+        </div>
+
+        <div className="text-xs font-bold text-slate-500">
+          Showing <span className="text-[#12356B]">{filteredOrders.length}</span> of {orders.length} Transactions
+        </div>
       </div>
 
       {/* Transactions Table */}
@@ -98,7 +180,14 @@ export const AdminPaymentsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {orders.map((order) => (
+              {filteredOrders.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    No transactions match your search and filter criteria.
+                  </td>
+                </tr>
+              )}
+              {filteredOrders.map((order) => (
                 <tr key={order._id} className="hover:bg-slate-50">
                   <td className="p-4 font-bold text-[#12356B]">
                     <div>{order.studentId?.name || 'Student'}</div>

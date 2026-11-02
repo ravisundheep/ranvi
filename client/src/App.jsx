@@ -9,6 +9,7 @@ import { SocketProvider } from './context/SocketContext';
 import { PublicLayout } from './components/layout/PublicLayout';
 import { StudentLayout } from './components/layout/StudentLayout';
 import { AdminLayout } from './components/layout/AdminLayout';
+import { ScrollManager } from './components/common/ScrollManager';
 
 // Home Page directly imported for instant First Contentful Paint
 import { HomePage } from './pages/public/HomePage';
@@ -88,6 +89,7 @@ const ProtectedAdminRoute = ({ children }) => {
 export function App() {
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+      <ScrollManager />
       <ToastProvider>
         <AuthProvider>
           <SocketProvider>

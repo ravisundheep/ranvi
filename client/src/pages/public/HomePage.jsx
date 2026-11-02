@@ -25,6 +25,7 @@ import {
   Compass,
   Play,
   CheckCircle2,
+  X,
 } from 'lucide-react';
 
 // ========================================================
@@ -410,7 +411,7 @@ export const HomePage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (!searchQuery.trim()) return;
-    navigate(`/bankers-path?search=${encodeURIComponent(searchQuery.trim())}`);
+    navigate(`/bankers-path?search=${encodeURIComponent(searchQuery.trim())}&division=ALL`);
   };
 
   // ----------------------------------------------------
@@ -483,7 +484,7 @@ export const HomePage = () => {
       {/* ========================================================
           1. TOP HERO CARD: "Your Government Job Journey" (EXACT REFERENCE)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4">
+      <section id="hero" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4">
         <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-white shadow-md bg-gradient-to-r from-[#009E60] via-[#059669] to-[#10B981] relative overflow-hidden flex items-center justify-between gap-4">
           {/* Subtle background glow */}
           <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
@@ -521,7 +522,7 @@ export const HomePage = () => {
       {/* ========================================================
           2. STATE SELECTOR & SEARCH BAR + LATEST UPDATES TICKER
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6 space-y-2.5">
+      <section id="search-section" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6 space-y-2.5">
         {/* Search Row */}
         <div className="flex items-center gap-2">
           {/* State Selector Pill */}
@@ -560,14 +561,26 @@ export const HomePage = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search for courses, exams, services..."
-                className="w-full bg-white border border-slate-200 rounded-xl pl-9.5 pr-20 py-2.5 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 shadow-2xs outline-none focus:border-[#009E60] focus:ring-1 focus:ring-[#009E60]"
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9.5 pr-28 py-2.5 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 shadow-2xs outline-none focus:border-[#009E60] focus:ring-1 focus:ring-[#009E60]"
               />
-              <button
-                type="submit"
-                className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-[#008A5E] hover:bg-[#007044] text-white font-bold text-xs px-3 sm:px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
-              >
-                Search
-              </button>
+              <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+                <button
+                  type="submit"
+                  className="bg-[#008A5E] hover:bg-[#007044] text-white font-bold text-xs px-3 sm:px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  Search
+                </button>
+              </div>
             </div>
           </form>
         </div>
@@ -588,7 +601,7 @@ export const HomePage = () => {
       {/* ========================================================
           3. TWO PROMINENT ACTION CARDS (NOTIFICATION & GUIDANCE)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+      <section id="quick-actions" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6">
         <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
           {/* Card 1: Notification */}
           <Link
@@ -641,7 +654,7 @@ export const HomePage = () => {
       {/* ========================================================
           4. "OUR COACHING PROGRAMS" (4 DISTINCT CARDS WITH 4x2 TILES)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6 space-y-3.5">
+      <section id="coaching-programs" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6 space-y-3.5">
         <div className="space-y-0.5">
           <h2 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif tracking-tight">
             Our Coaching Programs
@@ -715,7 +728,7 @@ export const HomePage = () => {
       {/* ========================================================
           5. 4 ACTION CARDS (2x2 GRID MATCHING REFERENCE UI)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+      <section id="features-action-grid" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6">
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
           {/* Card 1: Enquiry & Demo */}
           <Link
@@ -814,7 +827,7 @@ export const HomePage = () => {
       {/* ========================================================
           6. "LEARN WITH A CLEAR PLAN" (EXACT MATCH TO REFERENCE)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+      <section id="learning-plan" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6">
         <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-xs space-y-5">
           {/* Header with graduation cap badge */}
           <div className="flex items-start justify-between gap-4">
@@ -927,7 +940,7 @@ export const HomePage = () => {
           </div>
 
           {/* Sub-section: YOUR LEARNING JOURNEY */}
-          <div className="pt-2 border-t border-slate-100 space-y-2.5">
+          <div id="learning-journey" className="scroll-mt-24 pt-2 border-t border-slate-100 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
               <span className="font-black text-[#0B2545] uppercase tracking-wider text-[11px]">
                 YOUR LEARNING JOURNEY

@@ -20,6 +20,8 @@ import {
   ExternalLink,
   Laptop,
   Users,
+  X,
+  RotateCcw,
 } from 'lucide-react';
 
 const FALLBACK_ENTRANCE_EXAMS = [
@@ -294,20 +296,48 @@ export const EntranceExamsPage = () => {
           <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
             {/* Search Input */}
             <div className="relative flex-1 max-w-md">
-              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 type="text"
                 placeholder="Search by exam name, syllabus, or admission course..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 text-xs sm:text-sm rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#1769D2] shadow-xs"
+                className="w-full pl-10 pr-10 py-2.5 text-xs sm:text-sm rounded-2xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-[#1769D2] shadow-xs"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                  title="Clear search"
+                  aria-label="Clear search"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
             </div>
 
-            {/* Program Count Badge */}
-            <span className="text-xs font-bold text-slate-500 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-xs self-start md:self-auto">
-              Showing <strong className="text-[#0B1E3D]">{filteredExams.length}</strong> Entrance Exam Programs
-            </span>
+            {/* Program Count Badge & Reset */}
+            <div className="flex items-center gap-2 self-start md:self-auto">
+              <span className="text-xs font-bold text-slate-500 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-xs">
+                Showing <strong className="text-[#0B1E3D]">{filteredExams.length}</strong> of {exams.length} Entrance Exam Programs
+              </span>
+
+              {(searchQuery || selectedFilter !== 'ALL') && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSearchQuery('');
+                    setSelectedFilter('ALL');
+                  }}
+                  className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-colors cursor-pointer"
+                  title="Reset filters and search"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Quick Filter Tabs */}
@@ -315,8 +345,9 @@ export const EntranceExamsPage = () => {
             {filterTabs.map((tab) => (
               <button
                 key={tab.id}
+                type="button"
                 onClick={() => setSelectedFilter(tab.id)}
-                className={`px-4 py-2 rounded-xl font-bold whitespace-nowrap transition-all ${
+                className={`px-4 py-2 rounded-xl font-bold whitespace-nowrap transition-all cursor-pointer ${
                   selectedFilter === tab.id
                     ? 'bg-[#0B1E3D] text-white shadow-md'
                     : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 hover:text-[#0B1E3D]'
@@ -328,7 +359,8 @@ export const EntranceExamsPage = () => {
           </div>
         </div>
 
-        {/* Entrance Exam Programs Grid */}
+        {/* Entrance Exam Programs Grid or Empty State */}
+        {filteredExams.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
           {filteredExams.map((exam) => {
             const theme = getThemeStyles(exam.colorTheme);
@@ -455,6 +487,45 @@ export const EntranceExamsPage = () => {
             );
           })}
         </div>
+        ) : (
+          <div className="text-center py-16 bg-white rounded-3xl border border-slate-200 p-8 shadow-xs max-w-2xl mx-auto space-y-4">
+            <div className="w-16 h-16 rounded-full bg-blue-50 text-[#1769D2] flex items-center justify-center mx-auto border border-blue-200 shadow-inner">
+              <GraduationCap className="w-8 h-8" />
+            </div>
+            <div>
+              <span className="text-[11px] font-black uppercase tracking-wider bg-[#EAF3FF] text-[#12356B] px-3 py-1 rounded-full">
+                No Programs Found
+              </span>
+              <h3 className="text-xl font-black text-[#0B1E3D] font-heading mt-2">
+                No Entrance Exam Programs Match
+              </h3>
+              <p className="text-xs sm:text-sm text-slate-600 mt-2 leading-relaxed max-w-lg mx-auto">
+                {searchQuery
+                  ? `No entrance exam courses match "${searchQuery}". Please check your search terms or reset the filters.`
+                  : 'No programs found under the selected category filter.'}
+              </p>
+            </div>
+
+            <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setSearchQuery('');
+                  setSelectedFilter('ALL');
+                }}
+                className="inline-flex items-center gap-2 bg-[#1769D2] hover:bg-[#12356B] text-white px-5 py-2.5 rounded-xl text-xs font-black shadow-sm transition-all cursor-pointer"
+              >
+                <RotateCcw className="w-4 h-4" /> Reset Filters & View All
+              </button>
+              <Link
+                to={`/enquiry?course=${encodeURIComponent(searchQuery || 'Entrance Exams')}`}
+                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl text-xs font-black transition-all"
+              >
+                Request Custom Batch Consultation
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

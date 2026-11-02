@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { courseService } from '../../services';
 import { PageBanner } from '../../components/common/PageBanner';
-import { PlayCircle, Lock, BookOpen, Clock, ShieldCheck, ArrowRight } from 'lucide-react';
+import { PlayCircle, Lock, BookOpen, Clock, ShieldCheck, ArrowRight, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const RecordedClassesPage = () => {
   const [courses, setCourses] = useState([]);
   const [selectedCourse, setSelectedCourse] = useState(null);
+  const [courseSearch, setCourseSearch] = useState('');
   const [lessons, setLessons] = useState([]);
   const [activeLesson, setActiveLesson] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -57,21 +58,48 @@ export const RecordedClassesPage = () => {
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
         {/* Course Select Filter */}
-        <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-slate-200">
-          <span className="text-xs font-bold text-slate-500 uppercase mr-2">Select Course:</span>
-          {courses.map((c) => (
-            <button
-              key={c._id}
-              onClick={() => handleSelectCourse(c)}
-              className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                selectedCourse?._id === c._id
-                  ? 'bg-[#12356B] text-white shadow-md'
-                  : 'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200'
-              }`}
-            >
-              {c.title}
-            </button>
-          ))}
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs space-y-3">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <span className="text-xs font-bold text-slate-500 uppercase">Select Course:</span>
+            <div className="relative min-w-[200px] sm:min-w-[260px]">
+              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={courseSearch}
+                onChange={(e) => setCourseSearch(e.target.value)}
+                placeholder="Filter courses..."
+                className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+              />
+              {courseSearch && (
+                <button
+                  type="button"
+                  onClick={() => setCourseSearch('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                  title="Clear filter"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 max-h-36 overflow-y-auto pt-1">
+            {courses
+              .filter((c) => !courseSearch.trim() || c.title.toLowerCase().includes(courseSearch.trim().toLowerCase()))
+              .map((c) => (
+                <button
+                  key={c._id}
+                  onClick={() => handleSelectCourse(c)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    selectedCourse?._id === c._id
+                      ? 'bg-[#12356B] text-white shadow-md'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200'
+                  }`}
+                >
+                  {c.title}
+                </button>
+              ))}
+          </div>
         </div>
 
         {/* Video Player & Lesson Queue */}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { adminService } from '../../services';
 import { useToast } from '../../context/ToastContext';
@@ -14,11 +14,14 @@ import {
   Download,
   FileSpreadsheet,
   X,
+  Search,
+  RotateCcw,
 } from 'lucide-react';
 
 export const AdminQuestionsPage = () => {
   const { mockTestId } = useParams();
   const [questions, setQuestions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
@@ -306,6 +309,28 @@ export const AdminQuestionsPage = () => {
     }
   };
 
+  const filteredQuestions = useMemo(() => {
+    if (!searchQuery.trim()) return questions;
+    const q = searchQuery.trim().toLowerCase();
+    return questions.filter((question) => {
+      const text = (question.questionText || '').toLowerCase();
+      const subject = (question.subject || '').toLowerCase();
+      const topic = (question.topic || '').toLowerCase();
+      const explanation = (question.explanation || '').toLowerCase();
+      const optionsText = Array.isArray(question.options)
+        ? question.options.map((o) => o.text.toLowerCase()).join(' ')
+        : '';
+
+      return (
+        text.includes(q) ||
+        subject.includes(q) ||
+        topic.includes(q) ||
+        explanation.includes(q) ||
+        optionsText.includes(q)
+      );
+    });
+  }, [questions, searchQuery]);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -333,18 +358,48 @@ export const AdminQuestionsPage = () => {
               setBulkFileName('');
               setShowBulkModal(true);
             }}
-            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Upload className="w-4 h-4" /> Bulk Import (CSV)
           </button>
           <button
             onClick={handleOpenAdd}
-            className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.02]"
+            className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md transition-all hover:scale-[1.02] cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Add Question
           </button>
         </div>
       </div>
+
+      {/* Search Toolbar */}
+      {questions.length > 0 && (
+        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div className="relative min-w-[240px] sm:min-w-[320px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search question text, subject, options..."
+              className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          <div className="text-xs font-bold text-slate-500">
+            Showing <span className="text-[#12356B]">{filteredQuestions.length}</span> of {questions.length} Questions
+          </div>
+        </div>
+      )}
 
       {/* Question List */}
       <div className="space-y-4">
@@ -358,7 +413,20 @@ export const AdminQuestionsPage = () => {
           </div>
         )}
 
-        {questions.map((q, idx) => (
+        {filteredQuestions.length === 0 && questions.length > 0 && !loading && (
+          <div className="text-center py-12 bg-white rounded-3xl border border-slate-200">
+            <Search className="w-10 h-10 text-slate-300 mx-auto mb-2" />
+            <h4 className="font-bold text-[#12356B]">No questions match "{searchQuery}"</h4>
+            <button
+              onClick={() => setSearchQuery('')}
+              className="mt-2 text-xs font-bold text-[#1769D2] hover:underline"
+            >
+              Clear search filter
+            </button>
+          </div>
+        )}
+
+        {filteredQuestions.map((q, idx) => (
           <div key={q._id} className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-3">
             <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-100">
               <span className="font-bold text-[#12356B] bg-[#EAF3FF] px-2.5 py-1 rounded-lg">

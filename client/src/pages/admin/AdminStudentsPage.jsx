@@ -2,11 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import { useRealtimeEvent } from '../../context/SocketContext';
-import { Users, Search, ShieldCheck, RotateCcw, Ban, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Users, Search, ShieldCheck, RotateCcw, Ban, CheckCircle2, AlertTriangle, X, Filter } from 'lucide-react';
 
 export const AdminStudentsPage = () => {
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [resetModalStudent, setResetModalStudent] = useState(null);
   const [resetReason, setResetReason] = useState('Legitimate student phone/laptop replacement');
@@ -14,7 +15,12 @@ export const AdminStudentsPage = () => {
 
   const fetchStudents = async () => {
     try {
-      const res = await adminService.getStudents({ search, limit: 50 });
+      setLoading(true);
+      const params = { search, limit: 50 };
+      if (statusFilter === 'ACTIVE') params.isActive = 'true';
+      if (statusFilter === 'SUSPENDED') params.isActive = 'false';
+
+      const res = await adminService.getStudents(params);
       if (res.success && res.data) {
         setStudents(res.data.students || []);
       }
@@ -27,16 +33,16 @@ export const AdminStudentsPage = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, [search]);
+  }, [search, statusFilter]);
 
   // Real-time synchronization for student registrations and status updates
   useRealtimeEvent('student:registered', useCallback(() => {
     fetchStudents();
-  }, [search]));
+  }, [search, statusFilter]));
 
   useRealtimeEvent('admin:student_updated', useCallback(() => {
     fetchStudents();
-  }, [search]));
+  }, [search, statusFilter]));
 
   const handleResetDevice = async () => {
     if (!resetModalStudent) return;
@@ -77,15 +83,54 @@ export const AdminStudentsPage = () => {
           </p>
         </div>
 
-        <div className="relative max-w-xs w-full">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, phone..."
-            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#1769D2]"
-          />
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-700 shadow-2xs outline-none focus:border-[#1769D2]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="ACTIVE">Active Accounts</option>
+            <option value="SUSPENDED">Suspended Accounts</option>
+          </select>
+
+          {/* Search Box */}
+          <div className="relative min-w-[200px] sm:min-w-[240px]">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search by name, email, phone..."
+              className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
+
+          {(search || statusFilter !== 'ALL') && (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch('');
+                setStatusFilter('ALL');
+              }}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-xl bg-rose-50 text-rose-700 hover:bg-rose-100 border border-rose-200 text-xs font-bold transition-colors cursor-pointer"
+              title="Reset search and filters"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -104,6 +149,13 @@ export const AdminStudentsPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
+              {students.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    No student accounts found matching your criteria.
+                  </td>
+                </tr>
+              )}
               {students.map((student) => (
                 <tr key={student._id} className="hover:bg-slate-50">
                   <td className="p-4 font-bold text-[#12356B]">

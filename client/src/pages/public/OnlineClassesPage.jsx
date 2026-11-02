@@ -1,9 +1,31 @@
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 import { PageBanner } from '../../components/common/PageBanner';
-import { Video, Calendar, Clock, CheckCircle2, ShieldCheck, ArrowRight, ExternalLink } from 'lucide-react';
+import { Video, Calendar, Clock, CheckCircle2, ShieldCheck, ArrowRight, ExternalLink, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const OnlineClassesPage = () => {
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const sampleBatches = [
+    { program: 'JAIIB Master Batch 2026', type: 'Evening Regular', time: '7:30 PM - 9:00 PM (Daily)', faculty: 'Prof. Rajesh Sharma (Ex-AGM SBI)', platform: 'Zoom Live' },
+    { program: 'CAIIB Executive Batch', type: 'Late Evening', time: '8:30 PM - 10:00 PM (Mon-Sat)', faculty: 'Shri Arvind Narayanan (Ex-Chief Mgr PNB)', platform: 'Zoom Live' },
+    { program: 'IBPS & SBI PO Foundation', type: 'Morning Intensive', time: '9:00 AM - 12:00 PM (Mon-Fri)', faculty: 'Kavita Iyer & Anurag Mishra', platform: 'Zoom Live' },
+    { program: 'SSC CGL / CHSL Selection Batch', type: 'Daytime Batch', time: '10:00 AM - 1:00 PM (Daily)', faculty: 'Deepak Saxena', platform: 'Zoom Live' },
+    { program: 'JEE Main Engineering Batch', type: 'Weekend Crash Course', time: '9:00 AM - 1:00 PM (Sat-Sun)', faculty: 'Dr. Suresh Varma (IIT-M Alum)', platform: 'Zoom Live' },
+    { program: 'NEET-UG Medical Masterclass', type: 'Daily Morning', time: '6:30 AM - 8:30 AM (Daily)', faculty: 'Dr. A. Meenakshi (AIIMS Specialist)', platform: 'Zoom Live' },
+  ];
+
+  const filteredBatches = useMemo(() => {
+    if (!searchQuery.trim()) return sampleBatches;
+    const q = searchQuery.trim().toLowerCase();
+    return sampleBatches.filter(
+      (b) =>
+        b.program.toLowerCase().includes(q) ||
+        b.type.toLowerCase().includes(q) ||
+        b.faculty.toLowerCase().includes(q)
+    );
+  }, [searchQuery]);
+
   return (
     <div className="space-y-12 pb-20">
       <PageBanner
@@ -55,12 +77,37 @@ export const OnlineClassesPage = () => {
                 Upcoming Live Class Batches
               </h2>
             </div>
-            <Link
-              to="/student/live-classes"
-              className="inline-flex items-center gap-2 bg-[#12356B] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#0e2a56] transition-colors"
-            >
-              Access Live Portal <ArrowRight className="w-4 h-4" />
-            </Link>
+
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Search Box */}
+              <div className="relative min-w-[200px] sm:min-w-[240px]">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search batch or faculty..."
+                  className="w-full pl-8 pr-7 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    title="Clear search"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              <Link
+                to="/student/live-classes"
+                className="inline-flex items-center gap-2 bg-[#12356B] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#0e2a56] transition-colors shadow-xs"
+              >
+                Access Live Portal <ArrowRight className="w-4 h-4" />
+              </Link>
+            </div>
           </div>
 
           <div className="overflow-x-auto">
@@ -75,34 +122,27 @@ export const OnlineClassesPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                <tr>
-                  <td className="p-3.5 font-bold text-[#12356B]">JAIIB Master Batch 2026</td>
-                  <td className="p-3.5">Evening Regular</td>
-                  <td className="p-3.5 font-semibold">7:30 PM - 9:00 PM (Daily)</td>
-                  <td className="p-3.5">Prof. Rajesh Sharma (Ex-AGM SBI)</td>
-                  <td className="p-3.5"><span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">Zoom Live</span></td>
-                </tr>
-                <tr>
-                  <td className="p-3.5 font-bold text-[#12356B]">CAIIB Executive Batch</td>
-                  <td className="p-3.5">Late Evening</td>
-                  <td className="p-3.5 font-semibold">8:30 PM - 10:00 PM (Mon-Sat)</td>
-                  <td className="p-3.5">Shri Arvind Narayanan (Ex-Chief Mgr PNB)</td>
-                  <td className="p-3.5"><span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">Zoom Live</span></td>
-                </tr>
-                <tr>
-                  <td className="p-3.5 font-bold text-[#12356B]">IBPS & SBI PO Foundation</td>
-                  <td className="p-3.5">Morning Intensive</td>
-                  <td className="p-3.5 font-semibold">9:00 AM - 12:00 PM (Mon-Fri)</td>
-                  <td className="p-3.5">Kavita Iyer & Anurag Mishra</td>
-                  <td className="p-3.5"><span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">Zoom Live</span></td>
-                </tr>
-                <tr>
-                  <td className="p-3.5 font-bold text-[#12356B]">SSC CGL / CHSL Selection Batch</td>
-                  <td className="p-3.5">Daytime Batch</td>
-                  <td className="p-3.5 font-semibold">10:00 AM - 1:00 PM (Daily)</td>
-                  <td className="p-3.5">Deepak Saxena</td>
-                  <td className="p-3.5"><span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">Zoom Live</span></td>
-                </tr>
+                {filteredBatches.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
+                      No live batches found matching "{searchQuery}".
+                    </td>
+                  </tr>
+                ) : (
+                  filteredBatches.map((b, i) => (
+                    <tr key={i} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3.5 font-bold text-[#12356B]">{b.program}</td>
+                      <td className="p-3.5">{b.type}</td>
+                      <td className="p-3.5 font-semibold">{b.time}</td>
+                      <td className="p-3.5">{b.faculty}</td>
+                      <td className="p-3.5">
+                        <span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">
+                          {b.platform}
+                        </span>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -111,3 +151,5 @@ export const OnlineClassesPage = () => {
     </div>
   );
 };
+
+export default OnlineClassesPage;

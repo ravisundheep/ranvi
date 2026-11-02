@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { adminService } from '../../services';
 import { useToast } from '../../context/ToastContext';
-import { MessageSquareQuote, Search, Phone, Mail, CheckCircle2, Clock } from 'lucide-react';
+import { MessageSquareQuote, Search, Phone, Mail, CheckCircle2, Clock, X, Filter, RotateCcw } from 'lucide-react';
 
 export const AdminEnquiriesPage = () => {
   const [enquiries, setEnquiries] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
   const [selectedEnquiry, setSelectedEnquiry] = useState(null);
   const [statusUpdate, setStatusUpdate] = useState('CONTACTED');
@@ -46,15 +48,91 @@ export const AdminEnquiriesPage = () => {
     }
   };
 
+  const filteredEnquiries = useMemo(() => {
+    return enquiries.filter((e) => {
+      if (statusFilter !== 'ALL' && e.status !== statusFilter) return false;
+
+      if (searchQuery.trim()) {
+        const q = searchQuery.trim().toLowerCase();
+        const name = (e.fullName || '').toLowerCase();
+        const email = (e.email || '').toLowerCase();
+        const phone = (e.phone || '').toLowerCase();
+        const course = (e.courseInterest || '').toLowerCase();
+        const division = (e.division || '').toLowerCase();
+
+        const matches =
+          name.includes(q) ||
+          email.includes(q) ||
+          phone.includes(q) ||
+          course.includes(q) ||
+          division.includes(q);
+
+        if (!matches) return false;
+      }
+      return true;
+    });
+  }, [enquiries, statusFilter, searchQuery]);
+
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
-        <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
-          Enquiry Leads & Demo Registrations
-        </h1>
-        <p className="text-xs text-slate-500 mt-0.5">
-          Track incoming demo requests, admissions inquiries, counselor notes, and follow-ups.
-        </p>
+      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
+            Enquiry Leads & Demo Registrations
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Track incoming demo requests, admissions inquiries, counselor notes, and follow-ups.
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Status Filter */}
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-700 shadow-2xs outline-none focus:border-[#1769D2]"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="NEW">New Leads</option>
+            <option value="CONTACTED">Contacted</option>
+            <option value="CONVERTED">Converted</option>
+            <option value="CLOSED">Closed</option>
+          </select>
+
+          {/* Search Box */}
+          <div className="relative min-w-[200px] sm:min-w-[240px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search applicant, phone, course..."
+              className="w-full pl-8 pr-7 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
+          {(statusFilter !== 'ALL' || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter('ALL');
+                setSearchQuery('');
+              }}
+              className="text-xs font-bold text-rose-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
+            >
+              <RotateCcw className="w-3 h-3" /> Reset
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Enquiries Table */}
@@ -72,7 +150,14 @@ export const AdminEnquiriesPage = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-slate-700">
-              {enquiries.map((enq) => (
+              {filteredEnquiries.length === 0 && !loading && (
+                <tr>
+                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                    No enquiries match your search and filter criteria.
+                  </td>
+                </tr>
+              )}
+              {filteredEnquiries.map((enq) => (
                 <tr key={enq._id} className="hover:bg-slate-50">
                   <td className="p-4 font-bold text-[#12356B]">
                     <div>{enq.fullName}</div>

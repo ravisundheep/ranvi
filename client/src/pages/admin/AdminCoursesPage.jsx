@@ -3,13 +3,14 @@ import { Link } from 'react-router-dom';
 import { courseService, adminService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import { useRealtimeEvent } from '../../context/SocketContext';
-import { BookOpen, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, Filter, MapPin } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, Filter, MapPin, Search, X, RotateCcw } from 'lucide-react';
 
 export const AdminCoursesPage = () => {
   const [courses, setCourses] = useState([]);
   const [availableStates, setAvailableStates] = useState([]);
   const [selectedDivision, setSelectedDivision] = useState('ALL');
   const [selectedState, setSelectedState] = useState('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const { success, error: toastError } = useToast();
 
@@ -83,6 +84,16 @@ export const AdminCoursesPage = () => {
     }
   };
 
+  const filteredCourses = courses.filter((c) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.trim().toLowerCase();
+    const title = (c.title || '').toLowerCase();
+    const shortName = (c.tileShortName || '').toLowerCase();
+    const slug = (c.slug || '').toLowerCase();
+    const desc = (c.shortDescription || '').toLowerCase();
+    return title.includes(q) || shortName.includes(q) || slug.includes(q) || desc.includes(q);
+  });
+
   return (
     <div className="space-y-6">
       <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -108,6 +119,29 @@ export const AdminCoursesPage = () => {
           <div className="flex items-center gap-1.5 font-bold text-slate-600">
             <Filter className="w-3.5 h-3.5 text-[#1769D2]" /> Filter by:
           </div>
+
+          {/* Search Box */}
+          <div className="relative min-w-[180px] sm:min-w-[220px]">
+            <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search course title..."
+              className="w-full pl-8 pr-7 py-1.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                title="Clear search"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
+          </div>
+
           {/* Division Filter */}
           <select
             value={selectedDivision}
@@ -134,21 +168,22 @@ export const AdminCoursesPage = () => {
             ))}
           </select>
 
-          {(selectedDivision !== 'ALL' || selectedState !== 'ALL') && (
+          {(selectedDivision !== 'ALL' || selectedState !== 'ALL' || searchQuery) && (
             <button
               onClick={() => {
                 setSelectedDivision('ALL');
                 setSelectedState('ALL');
+                setSearchQuery('');
               }}
-              className="text-xs font-bold text-rose-600 hover:underline"
+              className="text-xs font-bold text-rose-600 hover:underline inline-flex items-center gap-1 cursor-pointer"
             >
-              Reset Filters
+              <RotateCcw className="w-3 h-3" /> Reset
             </button>
           )}
         </div>
 
         <div className="text-xs font-bold text-slate-500">
-          Total Courses: <span className="text-[#12356B]">{courses.length}</span>
+          Showing <span className="text-[#12356B]">{filteredCourses.length}</span> of {courses.length} Courses
         </div>
       </div>
 
@@ -174,14 +209,14 @@ export const AdminCoursesPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {courses.length === 0 ? (
+                {filteredCourses.length === 0 ? (
                   <tr>
                     <td colSpan={8} className="p-8 text-center text-slate-500 font-medium">
-                      No courses match your filter criteria.
+                      No courses match your search and filter criteria.
                     </td>
                   </tr>
                 ) : (
-                  courses.map((course) => (
+                  filteredCourses.map((course) => (
                     <tr key={course._id} className="hover:bg-slate-50">
                       <td className="p-4">
                         <div className="flex items-center gap-2.5">
