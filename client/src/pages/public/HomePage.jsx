@@ -198,7 +198,7 @@ const ProgramCard = React.memo(({
         )}
       </div>
 
-      {/* 4 columns x 2 rows Responsive Pastel Grid */}
+      {/* 4 columns x 2 rows Responsive Grid */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
         {displayCourses.map((course, idx) => {
           const fallback = defaultTiles[idx % defaultTiles.length] || {};
@@ -211,14 +211,14 @@ const ProgramCard = React.memo(({
             <Link
               key={course._id || idx}
               to={`/courses/${slug}`}
-              className="group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl border border-black/5 text-[#0F172A] shadow-2xs hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden"
+              className="group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl border border-white/10 text-white shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden"
               style={{ backgroundColor: color }}
               title={course.title || course.name}
             >
-              <div className="font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] text-[#0F172A] w-full px-0.5 break-words line-clamp-2 text-center">
+              <div className="font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] text-white w-full px-0.5 break-words line-clamp-2 text-center drop-shadow-xs">
                 {shortName}
               </div>
-              <div className="text-[7.5px] sm:text-[9px] md:text-[9.5px] text-[#475569] font-semibold leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center">
+              <div className="text-[7.5px] sm:text-[9px] md:text-[9.5px] text-white/90 font-medium leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center">
                 {courseSubtitle}
               </div>
             </Link>
@@ -400,49 +400,49 @@ export const HomePage = () => {
     [courses]
   );
 
-  // Exact fallback 8 pastel tiles matching reference image
+  // Fallback 8 rich tiles matching database theme
   const defaultCompetitiveTiles = [
-    { name: 'IBPS', subtitle: 'PO / Clerk / SO / RRB', color: '#FCE7F3', slug: 'ibps-po-clerk-so-rrb' },
-    { name: 'SBI', subtitle: 'PO / Clerk / SO', color: '#FFEDD5', slug: 'sbi-po-clerk-target-batch' },
-    { name: 'RBI', subtitle: 'Grade B / Assistant', color: '#FEF3C7', slug: 'rbi-grade-b-assistant' },
-    { name: 'SSC', subtitle: 'CGL / CHSL / MTS', color: '#FFFBEB', slug: 'ssc-cgl-chsl-cpo-mts' },
-    { name: 'RAILWAYS', subtitle: 'RRB NTPC / Group D', color: '#FEF9C3', slug: 'railways-rrb-ntpc-group-d' },
-    { name: 'POLICE & DEFENCE', subtitle: 'SI / Constable / Defence', color: '#FEF08A', slug: 'police-si-constable-defence-batch' },
-    { name: 'LIC / INSURANCE', subtitle: 'AAO / ADO / Assistant', color: '#D1FAE5', slug: 'lic-aao-ado-insurance-recruitment' },
-    { name: 'TEACHING', subtitle: 'TET / CTET / DSC', color: '#DCFCE7', slug: 'teaching-ctet-dsc-state-tet' },
+    { name: 'IBPS', subtitle: 'PO / Clerk / SO / RRB', color: '#007B88', slug: 'ibps-po-clerk-so-rrb' },
+    { name: 'SBI', subtitle: 'PO / Clerk / SO', color: '#7A1D5A', slug: 'sbi-po-clerk-target-batch' },
+    { name: 'RBI', subtitle: 'Grade B / Assistant', color: '#48631E', slug: 'rbi-grade-b-assistant' },
+    { name: 'SSC', subtitle: 'CGL / CHSL / MTS', color: '#B94715', slug: 'ssc-cgl-chsl-cpo-mts' },
+    { name: 'RAILWAYS', subtitle: 'RRB NTPC / Group D', color: '#2D5482', slug: 'railways-rrb-ntpc-group-d' },
+    { name: 'POLICE & DEFENCE', subtitle: 'SI / Constable / Defence', color: '#96372B', slug: 'police-si-constable-defence-batch' },
+    { name: 'LIC / INSURANCE', subtitle: 'AAO / ADO / Assistant', color: '#22636B', slug: 'lic-aao-ado-insurance-recruitment' },
+    { name: 'TEACHING', subtitle: 'TET / CTET / DSC', color: '#512D6D', slug: 'teaching-ctet-dsc-state-tet' },
   ];
 
   const defaultEntranceTiles = [
-    { name: 'JEE', subtitle: 'Main / Advanced', color: '#DCFCE7', slug: 'jee-main-advanced-engineering' },
-    { name: 'NEET-UG', subtitle: 'Medical Entrance', color: '#DCFCE7', slug: 'neet-ug-medical-entrance' },
-    { name: 'CUET', subtitle: 'UG / PG', color: '#DCFCE7', slug: 'cuet-ug-central-universities' },
-    { name: 'AP EAPCET', subtitle: 'Engineering / Agriculture', color: '#D1FAE5', slug: 'ap-eapcet-engineering-agriculture' },
-    { name: 'TG EAPCET', subtitle: 'Engineering / Agriculture', color: '#D1FAE5', slug: 'tg-eapcet-engineering-agriculture' },
-    { name: 'CLAT', subtitle: 'Law Entrance', color: '#DCFCE7', slug: 'clat-common-law-admission-test' },
-    { name: 'NDA', subtitle: 'Defence Academy', color: '#DCFCE7', slug: 'nda-national-defence-academy' },
-    { name: 'POLYCET', subtitle: 'Polytechnic Diploma', color: '#DCFCE7', slug: 'polycet-diploma-entrance-exam' },
+    { name: 'JEE', subtitle: 'Main / Advanced', color: '#007B88', slug: 'jee-main-advanced-engineering' },
+    { name: 'NEET-UG', subtitle: 'Medical Entrance', color: '#7A1D5A', slug: 'neet-ug-medical-entrance' },
+    { name: 'CUET', subtitle: 'UG / PG', color: '#48631E', slug: 'cuet-ug-central-universities' },
+    { name: 'AP EAPCET', subtitle: 'Engineering / Agriculture', color: '#B94715', slug: 'ap-eapcet-engineering-agriculture' },
+    { name: 'TG EAPCET', subtitle: 'Engineering / Agriculture', color: '#2D5482', slug: 'tg-eapcet-engineering-agriculture' },
+    { name: 'CLAT', subtitle: 'Law Entrance', color: '#96372B', slug: 'clat-common-law-admission-test' },
+    { name: 'NDA', subtitle: 'Defence Academy', color: '#22636B', slug: 'nda-national-defence-academy' },
+    { name: 'POLYCET', subtitle: 'Polytechnic Diploma', color: '#512D6D', slug: 'polycet-diploma-entrance-exam' },
   ];
 
   const defaultBankersTiles = [
-    { name: 'JAIIB', subtitle: 'Junior Associate of IIBF', color: '#E0F2FE', slug: 'jaiib-master-class-2026' },
-    { name: 'CAIIB', subtitle: 'Certified Associate of IIBF', color: '#E0F2FE', slug: 'caiib-advanced-comprehensive-batch' },
-    { name: 'DBF', subtitle: 'Diploma in Banking & Finance', color: '#E0F2FE', slug: 'dbf-diploma-banking-finance' },
-    { name: 'DTM', subtitle: 'Treasury & Risk Management', color: '#E0F2FE', slug: 'dtm-treasury-management' },
-    { name: 'AMFI', subtitle: 'Mutual Fund Certification', color: '#EDE9FE', slug: 'amfi-mutual-funds-certification' },
-    { name: 'NISM (SEBI)', subtitle: 'Securities Market Certification', color: '#EDE9FE', slug: 'nism-sebi-certification' },
-    { name: 'IRDAI', subtitle: 'Insurance Regulatory', color: '#EDE9FE', slug: 'irdai-insurance-certification' },
-    { name: 'DRA', subtitle: 'Debt Recovery Agent', color: '#EDE9FE', slug: 'dra-debt-recovery-agent' },
+    { name: 'JAIIB', subtitle: 'Junior Associate of IIBF', color: '#007B88', slug: 'jaiib-master-class-2026' },
+    { name: 'CAIIB', subtitle: 'Certified Associate of IIBF', color: '#7A1D5A', slug: 'caiib-advanced-comprehensive-batch' },
+    { name: 'DBF', subtitle: 'Diploma in Banking & Finance', color: '#48631E', slug: 'dbf-diploma-banking-finance' },
+    { name: 'DTM', subtitle: 'Treasury & Risk Management', color: '#B94715', slug: 'dtm-treasury-management' },
+    { name: 'AMFI', subtitle: 'Mutual Fund Certification', color: '#2D5482', slug: 'amfi-mutual-funds-certification' },
+    { name: 'NISM (SEBI)', subtitle: 'Securities Market Certification', color: '#96372B', slug: 'nism-sebi-certification' },
+    { name: 'IRDAI', subtitle: 'Insurance Regulatory', color: '#22636B', slug: 'irdai-insurance-certification' },
+    { name: 'DRA', subtitle: 'Debt Recovery Agent', color: '#512D6D', slug: 'dra-debt-recovery-agent' },
   ];
 
   const defaultTuitionsTiles = [
-    { name: 'School Tuitions', subtitle: 'Class 6 - 10 All Boards', color: '#EDE9FE', slug: 'school-tuitions-class-6-10' },
-    { name: 'Intermediate', subtitle: 'MPC • BiPC • MEC • CEC', color: '#EDE9FE', slug: 'intermediate-tuitions' },
-    { name: 'Subject-wise', subtitle: 'Maths • Accounts • English', color: '#F3E8FF', slug: 'subject-wise-tuitions' },
-    { name: 'Foundation', subtitle: 'IIT-JEE & NEET Foundation', color: '#F3E8FF', slug: 'foundation-course-class-6-10' },
-    { name: 'Vedic Maths', subtitle: 'Speed Math & Mental Ability', color: '#FCE7F3', slug: 'vedic-maths-mental-ability' },
-    { name: 'Spoken English', subtitle: 'Communication & Fluency', color: '#FCE7F3', slug: 'spoken-english-communication' },
-    { name: 'Mathematics', subtitle: 'Concept & Problem Solving', color: '#FCE7F3', slug: 'mathematics-special-tuition' },
-    { name: 'Science & Physics', subtitle: 'Foundation & Practical', color: '#FCE7F3', slug: 'science-physics-tuition' },
+    { name: 'School Tuitions', subtitle: 'Class 6 - 10 All Boards', color: '#2D5482', slug: 'school-tuitions-class-6-10' },
+    { name: 'Intermediate', subtitle: 'MPC • BiPC • MEC • CEC', color: '#7A1D5A', slug: 'intermediate-tuitions' },
+    { name: 'Subject-wise', subtitle: 'Maths • Accounts • English', color: '#007B88', slug: 'subject-wise-tuitions' },
+    { name: 'Foundation', subtitle: 'IIT-JEE & NEET Foundation', color: '#48631E', slug: 'foundation-course-class-6-10' },
+    { name: 'Vedic Maths', subtitle: 'Speed Math & Mental Ability', color: '#B94715', slug: 'vedic-maths-mental-ability' },
+    { name: 'Spoken English', subtitle: 'Communication & Fluency', color: '#96372B', slug: 'spoken-english-communication' },
+    { name: 'Mathematics', subtitle: 'Concept & Problem Solving', color: '#22636B', slug: 'mathematics-special-tuition' },
+    { name: 'Science & Physics', subtitle: 'Foundation & Practical', color: '#512D6D', slug: 'science-physics-tuition' },
   ];
 
   return (
@@ -609,7 +609,7 @@ export const HomePage = () => {
           }
           pageLink="/competitive-exams"
           pageLinkLabel="Competitive Exams Page"
-          fallbackColor="#FEF3C7"
+          fallbackColor="#007B88"
         />
 
         {/* Program 2: Entrance Exams */}
@@ -624,7 +624,7 @@ export const HomePage = () => {
           }
           pageLink="/entrance-exams"
           pageLinkLabel="Entrance Exams Page"
-          fallbackColor="#DCFCE7"
+          fallbackColor="#7A1D5A"
         />
 
         {/* Program 3: Banker's Path */}
@@ -639,7 +639,7 @@ export const HomePage = () => {
           }
           pageLink="/bankers-path"
           pageLinkLabel="Banker's Path Page"
-          fallbackColor="#E0F2FE"
+          fallbackColor="#007B88"
         />
 
         {/* Program 4: Tuitions (NEW from reference) */}
@@ -654,7 +654,7 @@ export const HomePage = () => {
           }
           pageLink="/bankers-path"
           pageLinkLabel="Tuitions Page"
-          fallbackColor="#EDE9FE"
+          fallbackColor="#2D5482"
         />
       </section>
 
