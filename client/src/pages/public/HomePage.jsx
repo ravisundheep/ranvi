@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { courseService } from '../../services';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import {
@@ -17,10 +17,53 @@ import {
   FileText,
   ClipboardList,
   Mail,
+  Search,
+  Bell,
+  MapPin,
+  MessageSquare,
+  Sparkles,
+  Compass,
+  Play,
+  CheckCircle2,
 } from 'lucide-react';
 
 // ========================================================
-// 1. TILE HELPER FUNCTIONS (FAST CACHED TITLES & SUBTITLES)
+// 1. CLASSICAL PARLIAMENT / BANK BUILDING GRAPHIC (EXACT SVG)
+// ========================================================
+const ClassicalBuildingGraphic = () => (
+  <svg
+    viewBox="0 0 160 130"
+    className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 drop-shadow-md select-none"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+  >
+    {/* Classical Pediment (Triangle Roof) */}
+    <path d="M80 18 L18 50 L142 50 Z" fill="#FFFFFF" />
+    {/* Architrave / Entablature */}
+    <rect x="14" y="50" width="132" height="10" rx="2" fill="#FFFFFF" />
+    {/* 5 Classical Columns */}
+    <rect x="24" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
+    <rect x="50" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
+    <rect x="74" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
+    <rect x="98" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
+    <rect x="124" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
+    {/* Steps / Stylobate Base */}
+    <rect x="14" y="110" width="132" height="8" rx="2" fill="#FFFFFF" />
+    <rect x="8" y="118" width="144" height="10" rx="2" fill="#F4B942" />
+    {/* Golden Checkmark Badge on Pediment */}
+    <circle cx="136" cy="22" r="13" fill="#F4B942" />
+    <path
+      d="M130 22 L134 26 L142 18"
+      stroke="#0B2545"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </svg>
+);
+
+// ========================================================
+// 2. TILE HELPER FUNCTIONS (FAST CACHED TITLES & SUBTITLES)
 // ========================================================
 const shortNameCache = new Map();
 const getTileShortName = (course) => {
@@ -80,7 +123,6 @@ const getTileSubtitle = (course, fallbackSubtitle = '') => {
   const rawSub = course?.tileSubtitle || course?.subtitle || '';
 
   let result = '';
-  // 1. Direct canonical mappings matching reference UI perfectly
   if (slug.includes('jaiib') || t.includes('jaiib')) result = 'Junior Associate of IIBF';
   else if (slug.includes('caiib') || t.includes('caiib')) result = 'Certified Associate of IIBF';
   else if (slug.includes('dbf') || t.includes('diploma in banking')) result = 'Diploma in Banking & Finance';
@@ -131,7 +173,7 @@ const getTileSubtitle = (course, fallbackSubtitle = '') => {
 };
 
 // ========================================================
-// 2. REUSABLE PROGRAM CARD COMPONENT (4x2 EXPANDABLE TILES)
+// 3. REUSABLE PROGRAM CARD (4x2 PASTEL TILES MATCHING REFERENCE)
 // ========================================================
 const ProgramCard = React.memo(({
   title,
@@ -142,10 +184,8 @@ const ProgramCard = React.memo(({
   onToggleExpand,
   pageLink,
   pageLinkLabel,
-  fallbackColor,
-  loading,
+  fallbackColor = '#E0F2FE',
 }) => {
-  // Always render defaultTiles instantly if courses not yet loaded to prevent any blank state
   const displayCourses =
     courses && courses.length > 0
       ? isExpanded
@@ -154,7 +194,7 @@ const ProgramCard = React.memo(({
       : defaultTiles;
 
   return (
-    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200 shadow-xs space-y-3">
+    <div className="bg-white rounded-2xl p-3.5 sm:p-5 border border-slate-200/90 shadow-xs space-y-3">
       {/* Card Header with in-place toggle */}
       <div className="flex items-center justify-between">
         <div>
@@ -169,7 +209,7 @@ const ProgramCard = React.memo(({
           <button
             type="button"
             onClick={onToggleExpand}
-            className="bg-[#0B2545] hover:bg-[#12356B] active:scale-95 text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md transition-all flex items-center gap-1 shadow-xs cursor-pointer"
+            className="bg-[#2A3B5C] hover:bg-[#1E293B] active:scale-95 text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-lg transition-all flex items-center gap-1 shadow-xs cursor-pointer"
           >
             {isExpanded ? (
               <>
@@ -184,34 +224,34 @@ const ProgramCard = React.memo(({
         ) : (
           <Link
             to={pageLink}
-            className="bg-[#0B2545] hover:bg-[#12356B] text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-md transition-colors"
+            className="bg-[#2A3B5C] hover:bg-[#1E293B] text-white text-[11px] sm:text-xs font-bold px-3 py-1.5 rounded-lg transition-colors"
           >
             View All
           </Link>
         )}
       </div>
 
-      {/* 4 columns x 2 rows Responsive Grid */}
+      {/* 4 columns x 2 rows Responsive Pastel Grid */}
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
         {displayCourses.map((course, idx) => {
           const fallback = defaultTiles[idx % defaultTiles.length] || {};
           const shortName = getTileShortName(course) || fallback.name;
           const courseSubtitle = getTileSubtitle(course, fallback.subtitle);
-          const color = course.tileColor || course.color || fallback.color || fallbackColor;
+          const color = course.tileColor || fallback.color || fallbackColor;
           const slug = course.slug || fallback.slug;
 
           return (
             <Link
               key={course._id || idx}
               to={`/courses/${slug}`}
-              className="group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl text-white shadow-xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden"
+              className="group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl border border-black/5 text-[#0F172A] shadow-2xs hover:shadow-sm hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden"
               style={{ backgroundColor: color }}
               title={course.title || course.name}
             >
-              <div className="font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] drop-shadow-xs w-full px-0.5 break-words line-clamp-2 text-center">
+              <div className="font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] text-[#0F172A] w-full px-0.5 break-words line-clamp-2 text-center">
                 {shortName}
               </div>
-              <div className="text-[7.5px] sm:text-[9px] md:text-[9.5px] lg:text-[10px] text-white/95 font-medium leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center">
+              <div className="text-[7.5px] sm:text-[9px] md:text-[9.5px] text-[#475569] font-semibold leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center">
                 {courseSubtitle}
               </div>
             </Link>
@@ -250,7 +290,7 @@ const ProgramCard = React.memo(({
   );
 });
 
-// Pre-load from sessionStorage for instantaneous 0ms display on repeat visits
+// Cache loader from sessionStorage for instant 0ms paint
 const getInitialCachedCourses = (state) => {
   try {
     if (typeof window !== 'undefined') {
@@ -261,7 +301,6 @@ const getInitialCachedCourses = (state) => {
   return [];
 };
 
-// Module-level cached states list
 let cachedAvailableStates = [
   'All India',
   'Andhra Pradesh',
@@ -276,37 +315,24 @@ let cachedAvailableStates = [
 
 export const HomePage = () => {
   const { settings } = useSiteSettings();
+  const navigate = useNavigate();
 
   // ----------------------------------------------------
-  // 1. STATE & DATA HOOKS (WITH INSTANT CACHED FIRST PAINT)
+  // 1. STATE & DATA HOOKS (INSTANT CACHED FIRST PAINT)
   // ----------------------------------------------------
   const [selectedState, setSelectedState] = useState('Andhra Pradesh');
   const [courses, setCourses] = useState(() => getInitialCachedCourses('Andhra Pradesh'));
   const [availableStates, setAvailableStates] = useState(cachedAvailableStates);
   const [coursesLoading, setCoursesLoading] = useState(() => getInitialCachedCourses('Andhra Pradesh').length === 0);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Expanded "View All" state per coaching card
   const [expandedSection, setExpandedSection] = useState({
-    bankers: false,
     competitive: false,
     entrance: false,
+    bankers: false,
+    tuitions: false,
   });
-
-  // Hero Static Headline & Tagline from Settings
-  const heroHeadlinePrefix = settings?.heroBanner?.headlinePrefix || 'Build Your';
-  const heroHeadlineHighlight =
-    settings?.heroBanner?.headlineHighlight ||
-    settings?.heroBanner?.highlightWord ||
-    'Banking & Government';
-  const heroHeadlineSuffix =
-    settings?.heroBanner?.headlineSuffix !== undefined
-      ? settings?.heroBanner?.headlineSuffix
-      : 'Career with Us';
-  const bannerStripTagline =
-    settings?.bannerStripText ||
-    settings?.bannerStrip?.tagline ||
-    settings?.supportingMessage ||
-    'Learn • Excel • Achieve';
 
   // Fetch available states once with caching
   useEffect(() => {
@@ -318,9 +344,7 @@ export const HomePage = () => {
           cachedAvailableStates = res.data;
           setAvailableStates(res.data);
         }
-      } catch (err) {
-        // Fallback pre-populated in initial state
-      }
+      } catch (err) {}
     };
     fetchStates();
     return () => {
@@ -328,11 +352,9 @@ export const HomePage = () => {
     };
   }, []);
 
-  // Fetch courses whenever selectedState changes (with SWR caching)
+  // Fetch courses with SWR caching
   useEffect(() => {
     let isMounted = true;
-
-    // Check if we have cached courses for this state to show instantly
     const cached = getInitialCachedCourses(selectedState);
     if (cached.length > 0) {
       setCourses(cached);
@@ -374,26 +396,26 @@ export const HomePage = () => {
       } catch (err) {
         console.error('Failed to load courses', err);
       } finally {
-        if (isMounted) {
-          setCoursesLoading(false);
-        }
+        if (isMounted) setCoursesLoading(false);
       }
     };
 
     fetchCourses();
-
     return () => {
       isMounted = false;
     };
   }, [selectedState]);
 
+  // Handle Search Submission
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (!searchQuery.trim()) return;
+    navigate(`/bankers-path?search=${encodeURIComponent(searchQuery.trim())}`);
+  };
+
   // ----------------------------------------------------
   // 2. MEMOIZED COURSE CATEGORIZATION & UTILITIES
   // ----------------------------------------------------
-  const bankersCourses = useMemo(
-    () => courses.filter((c) => c.division === 'BANKERS_PATH'),
-    [courses]
-  );
   const competitiveCourses = useMemo(
     () => courses.filter((c) => c.division === 'COMPETITIVE_EXAMS'),
     [courses]
@@ -402,331 +424,237 @@ export const HomePage = () => {
     () => courses.filter((c) => c.division === 'ENTRANCE_EXAMS'),
     [courses]
   );
+  const bankersCourses = useMemo(
+    () => courses.filter((c) => c.division === 'BANKERS_PATH'),
+    [courses]
+  );
+  const tuitionsCourses = useMemo(
+    () => courses.filter((c) => c.division === 'TUITIONS'),
+    [courses]
+  );
 
-  // Exact fallback 8 tiles matching reference image
-  const defaultBankersTiles = [
-    { name: 'JAIIB', subtitle: 'Junior Associate of IIBF', color: '#008080', slug: 'jaiib-master-class-2026' },
-    { name: 'CAIIB', subtitle: 'Certified Associate of IIBF', color: '#7A1D5A', slug: 'caiib-advanced-comprehensive-batch' },
-    { name: 'DBF', subtitle: 'Diploma in Banking & Finance', color: '#48631E', slug: 'dbf-diploma-banking-finance' },
-    { name: 'DTM', subtitle: 'Diploma in Treasury Management', color: '#B94715', slug: 'dtm-treasury-management' },
-    { name: 'AMFI', subtitle: 'Mutual Fund Certification', color: '#2D5482', slug: 'amfi-mutual-funds-certification' },
-    { name: 'NISM (SEBI)', subtitle: 'Securities Market Certification', color: '#96372B', slug: 'nism-sebi-certification' },
-    { name: 'IRDAI', subtitle: 'Insurance Regulatory', color: '#22636B', slug: 'irdai-insurance-certification' },
-    { name: 'DRA', subtitle: 'Debt Recovery Agent', color: '#512D6D', slug: 'dra-debt-recovery-agent' },
-  ];
-
+  // Exact fallback 8 pastel tiles matching reference image
   const defaultCompetitiveTiles = [
-    { name: 'IBPS', subtitle: 'PO / Clerk / SO / RRB', color: '#008080', slug: 'ibps-po-clerk-so-rrb' },
-    { name: 'SBI', subtitle: 'PO / Clerk / Specialist', color: '#7A1D5A', slug: 'sbi-po-clerk-target-batch' },
-    { name: 'RBI', subtitle: 'Grade B / Assistant', color: '#48631E', slug: 'rbi-grade-b-assistant' },
-    { name: 'SSC', subtitle: 'CGL / CHSL / MTS', color: '#B94715', slug: 'ssc-cgl-chsl-cpo-mts' },
-    { name: 'RAILWAYS', subtitle: 'RRB NTPC / Group D', color: '#2D5482', slug: 'railways-rrb-ntpc-group-d' },
-    { name: 'POLICE & DEFENCE', subtitle: 'SI / Constable / Defence', color: '#96372B', slug: 'police-si-constable-defence-batch' },
-    { name: 'LIC / INSURANCE', subtitle: 'AAO / ADO / Assistant', color: '#22636B', slug: 'lic-aao-ado-insurance-recruitment' },
-    { name: 'TEACHING', subtitle: 'TET / CTET / DSC', color: '#512D6D', slug: 'teaching-ctet-dsc-state-tet' },
+    { name: 'IBPS', subtitle: 'PO / Clerk / SO / RRB', color: '#FCE7F3', slug: 'ibps-po-clerk-so-rrb' },
+    { name: 'SBI', subtitle: 'PO / Clerk / SO', color: '#FFEDD5', slug: 'sbi-po-clerk-target-batch' },
+    { name: 'RBI', subtitle: 'Grade B / Assistant', color: '#FEF3C7', slug: 'rbi-grade-b-assistant' },
+    { name: 'SSC', subtitle: 'CGL / CHSL / MTS', color: '#FFFBEB', slug: 'ssc-cgl-chsl-cpo-mts' },
+    { name: 'RAILWAYS', subtitle: 'RRB NTPC / Group D', color: '#FEF9C3', slug: 'railways-rrb-ntpc-group-d' },
+    { name: 'POLICE & DEFENCE', subtitle: 'SI / Constable / Defence', color: '#FEF08A', slug: 'police-si-constable-defence-batch' },
+    { name: 'LIC / INSURANCE', subtitle: 'AAO / ADO / Assistant', color: '#D1FAE5', slug: 'lic-aao-ado-insurance-recruitment' },
+    { name: 'TEACHING', subtitle: 'TET / CTET / DSC', color: '#DCFCE7', slug: 'teaching-ctet-dsc-state-tet' },
   ];
 
   const defaultEntranceTiles = [
-    { name: 'JEE', subtitle: 'Main / Advanced', color: '#008080', slug: 'jee-main-advanced-engineering' },
-    { name: 'NEET-UG', subtitle: 'Medical Entrance', color: '#7A1D5A', slug: 'neet-ug-medical-entrance' },
-    { name: 'CUET', subtitle: 'UG / PG', color: '#48631E', slug: 'cuet-ug-central-universities' },
-    { name: 'AP EAPCET', subtitle: 'Engineering / Agriculture', color: '#B94715', slug: 'ap-eapcet-engineering-agriculture' },
-    { name: 'TG EAPCET', subtitle: 'Engineering / Agriculture', color: '#2D5482', slug: 'tg-eapcet-engineering-agriculture' },
-    { name: 'CLAT', subtitle: 'Law Entrance', color: '#96372B', slug: 'clat-common-law-admission-test' },
-    { name: 'NDA', subtitle: 'National Defence Academy', color: '#22636B', slug: 'nda-national-defence-academy' },
-    { name: 'POLYCET', subtitle: 'Polytechnic Diploma', color: '#512D6D', slug: 'polycet-diploma-entrance-exam' },
+    { name: 'JEE', subtitle: 'Main / Advanced', color: '#DCFCE7', slug: 'jee-main-advanced-engineering' },
+    { name: 'NEET-UG', subtitle: 'Medical Entrance', color: '#DCFCE7', slug: 'neet-ug-medical-entrance' },
+    { name: 'CUET', subtitle: 'UG / PG', color: '#DCFCE7', slug: 'cuet-ug-central-universities' },
+    { name: 'AP EAPCET', subtitle: 'Engineering / Agriculture', color: '#D1FAE5', slug: 'ap-eapcet-engineering-agriculture' },
+    { name: 'TG EAPCET', subtitle: 'Engineering / Agriculture', color: '#D1FAE5', slug: 'tg-eapcet-engineering-agriculture' },
+    { name: 'CLAT', subtitle: 'Law Entrance', color: '#DCFCE7', slug: 'clat-common-law-admission-test' },
+    { name: 'NDA', subtitle: 'Defence Academy', color: '#DCFCE7', slug: 'nda-national-defence-academy' },
+    { name: 'POLYCET', subtitle: 'Polytechnic Diploma', color: '#DCFCE7', slug: 'polycet-diploma-entrance-exam' },
   ];
 
-
-
-  // 4 Action Hub Cards Config (Dynamic from Site Settings if configured)
-  const defaultActionCards = [
-    {
-      title: 'Enquiry & Demo',
-      subtitle: 'Join our free demo classes',
-      path: '/enquiry',
-      bgColor: '#0080FF',
-      icon: Mail,
-    },
-    {
-      title: 'Materials',
-      subtitle: 'Get study notes',
-      path: '/recorded-classes',
-      bgColor: '#FF8C00',
-      icon: FileText,
-    },
-    {
-      title: 'Classes',
-      subtitle: 'Live & Recorded',
-      path: '/online-classes',
-      bgColor: '#00C853',
-      icon: MonitorPlay,
-    },
-    {
-      title: 'Exams',
-      subtitle: 'Mock tests & Online tests',
-      path: '/mock-tests',
-      bgColor: '#9B51E0',
-      icon: ClipboardList,
-    },
+  const defaultBankersTiles = [
+    { name: 'JAIIB', subtitle: 'Junior Associate of IIBF', color: '#E0F2FE', slug: 'jaiib-master-class-2026' },
+    { name: 'CAIIB', subtitle: 'Certified Associate of IIBF', color: '#E0F2FE', slug: 'caiib-advanced-comprehensive-batch' },
+    { name: 'DBF', subtitle: 'Diploma in Banking & Finance', color: '#E0F2FE', slug: 'dbf-diploma-banking-finance' },
+    { name: 'DTM', subtitle: 'Treasury & Risk Management', color: '#E0F2FE', slug: 'dtm-treasury-management' },
+    { name: 'AMFI', subtitle: 'Mutual Fund Certification', color: '#EDE9FE', slug: 'amfi-mutual-funds-certification' },
+    { name: 'NISM (SEBI)', subtitle: 'Securities Market Certification', color: '#EDE9FE', slug: 'nism-sebi-certification' },
+    { name: 'IRDAI', subtitle: 'Insurance Regulatory', color: '#EDE9FE', slug: 'irdai-insurance-certification' },
+    { name: 'DRA', subtitle: 'Debt Recovery Agent', color: '#EDE9FE', slug: 'dra-debt-recovery-agent' },
   ];
 
-  const actionCards =
-    Array.isArray(settings?.actionCards) && settings.actionCards.length === 4
-      ? settings.actionCards.map((card, idx) => ({
-          ...defaultActionCards[idx],
-          title: card.title || defaultActionCards[idx].title,
-          subtitle: card.subtitle || defaultActionCards[idx].subtitle,
-          path: card.path || card.link || defaultActionCards[idx].path,
-          bgColor: card.bgColor || defaultActionCards[idx].bgColor,
-          icon: defaultActionCards[idx].icon,
-        }))
-      : defaultActionCards;
-
-  // 4 Learn with a Clear Plan Feature Cards Config (Dynamic from Settings)
-  const defaultPlanFeatures = [
-    {
-      title: 'Daily Planner',
-      desc: 'Structured daily schedule to cover complete syllabus on time.',
-      icon: FileText,
-      iconColor: '#0070F3',
-      iconBg: 'bg-blue-100',
-      cardBg: 'bg-[#EBF5FB]',
-      border: 'border-[#D4EBF8]',
-    },
-    {
-      title: 'Classes',
-      desc: 'Interactive live & high quality recorded video lectures.',
-      icon: MonitorPlay,
-      iconColor: '#00A86B',
-      iconBg: 'bg-emerald-100',
-      cardBg: 'bg-[#EAF9F1]',
-      border: 'border-[#D1F2DF]',
-    },
-    {
-      title: 'Practice Exams',
-      desc: 'Chapter-wise quizzes and full-length online mock tests.',
-      icon: ClipboardList,
-      iconColor: '#8A2BE2',
-      iconBg: 'bg-purple-100',
-      cardBg: 'bg-[#F6EEFD]',
-      border: 'border-[#E9D5FA]',
-    },
-    {
-      title: 'Expert Guidance',
-      desc: 'Doubt sessions and personal mentoring by retired bankers & rankers.',
-      icon: Users,
-      iconColor: '#D97706',
-      iconBg: 'bg-amber-100',
-      cardBg: 'bg-[#FFF8EC]',
-      border: 'border-[#FEE7C3]',
-    },
+  const defaultTuitionsTiles = [
+    { name: 'School Tuitions', subtitle: 'Class 6 - 10 All Boards', color: '#EDE9FE', slug: 'school-tuitions-class-6-10' },
+    { name: 'Intermediate', subtitle: 'MPC • BiPC • MEC • CEC', color: '#EDE9FE', slug: 'intermediate-tuitions' },
+    { name: 'Subject-wise', subtitle: 'Maths • Accounts • English', color: '#F3E8FF', slug: 'subject-wise-tuitions' },
+    { name: 'Foundation', subtitle: 'IIT-JEE & NEET Foundation', color: '#F3E8FF', slug: 'foundation-course-class-6-10' },
+    { name: 'Vedic Maths', subtitle: 'Speed Math & Mental Ability', color: '#FCE7F3', slug: 'vedic-maths-mental-ability' },
+    { name: 'Spoken English', subtitle: 'Communication & Fluency', color: '#FCE7F3', slug: 'spoken-english-communication' },
+    { name: 'Mathematics', subtitle: 'Concept & Problem Solving', color: '#FCE7F3', slug: 'mathematics-special-tuition' },
+    { name: 'Science & Physics', subtitle: 'Foundation & Practical', color: '#FCE7F3', slug: 'science-physics-tuition' },
   ];
-
-  const planFeatures =
-    Array.isArray(settings?.clearPlanSection?.features) &&
-    settings.clearPlanSection.features.length === 4
-      ? settings.clearPlanSection.features.map((f, idx) => ({
-          ...defaultPlanFeatures[idx],
-          title: f.title || defaultPlanFeatures[idx].title,
-          desc: f.desc || defaultPlanFeatures[idx].desc,
-        }))
-      : defaultPlanFeatures;
-
-  // 3 Roadmap Steps Config (Dynamic from Settings)
-  const defaultRoadmapSteps = [
-    {
-      step: '01',
-      title: 'Enroll in your course',
-      desc: 'Get instant access to study material & video lectures.',
-    },
-    {
-      step: '02',
-      title: 'Learn & Practice',
-      desc: 'Join daily live classes & take chapter-wise mock tests.',
-    },
-    {
-      step: '03',
-      title: 'Crack Exam & Reach Goal',
-      desc: 'Achieve top ranks with continuous guidance & analysis.',
-    },
-  ];
-
-  const roadmapSteps =
-    Array.isArray(settings?.roadmapSection?.steps) &&
-    settings.roadmapSection.steps.length === 3
-      ? settings.roadmapSection.steps.map((s, idx) => ({
-          ...defaultRoadmapSteps[idx],
-          step: s.step || defaultRoadmapSteps[idx].step,
-          title: s.title || defaultRoadmapSteps[idx].title,
-          desc: s.desc || defaultRoadmapSteps[idx].desc,
-        }))
-      : defaultRoadmapSteps;
 
   return (
-    <div className="space-y-6 sm:space-y-8 pb-16 bg-[#F8FAFC] overflow-x-hidden">
+    <div className="space-y-4 sm:space-y-6 pb-16 bg-[#F8FAFC] overflow-x-hidden">
       {/* ========================================================
-          HERO BANNER: STATIC DESIGN MATCHING REFERENCE (FIXED IMAGE)
+          1. TOP HERO CARD: "Your Government Job Journey" (EXACT REFERENCE)
       ======================================================== */}
-      <section className="relative w-full overflow-hidden bg-[#081A36] text-white shadow-2xl">
-        <div className="absolute inset-0 z-0">
-          <img
-            src="/assets/hero-banner.png"
-            alt="Ranvi Institutions Hero"
-            onError={(e) => {
-              e.currentTarget.src = '/hero-banner.png';
-            }}
-            className="w-full h-full object-cover object-right scale-105"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-[#081A36] via-[#081A36]/95 via-40% to-transparent sm:via-[#081A36]/90 sm:via-48% lg:via-[#081A36]/80 lg:via-55%"></div>
-        </div>
+      <section className="max-w-5xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4">
+        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-white shadow-md bg-gradient-to-r from-[#009E60] via-[#059669] to-[#10B981] relative overflow-hidden flex items-center justify-between gap-4">
+          {/* Subtle background glow */}
+          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 relative z-10 pt-8 sm:pt-12 pb-10 sm:pb-14">
-          <div className="max-w-[30vh] sm:max-w-xl text-left space-y-5">
-            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black font-serif tracking-tight leading-[1.15] text-white drop-shadow-md">
-              {heroHeadlinePrefix}{' '}
-              <span className="text-[#F4B942]">{heroHeadlineHighlight}</span>
-              {heroHeadlineSuffix ? ` ${heroHeadlineSuffix}` : ''}
-            </h1>
-
-            <div className="grid grid-cols-4 gap-2 pt-1 text-center">
-              <div>
-                <div className="relative mb-1.5 flex items-center justify-center">
-                  <Shield className="w-6 h-6 sm:w-8 sm:h-8 text-white stroke-[1.8]" />
-                  <Star className="w-3 h-3 text-[#F4B942] fill-[#F4B942] absolute inset-0 m-auto" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-bold text-white leading-tight block">
-                  Expert<br />Faculty
-                </span>
-              </div>
-              <div>
-                <div className="mb-1.5 flex items-center justify-center">
-                  <BookOpen className="w-6 h-6 sm:w-8 sm:h-8 text-white stroke-[1.8]" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-bold text-white leading-tight block">
-                  Updated<br />Material
-                </span>
-              </div>
-              <div>
-                <div className="mb-1.5 flex items-center justify-center">
-                  <MonitorPlay className="w-6 h-6 sm:w-8 sm:h-8 text-white stroke-[1.8]" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-bold text-white leading-tight block">
-                  Online &<br />Offline
-                </span>
-              </div>
-              <div>
-                <div className="mb-1.5 flex items-center justify-center">
-                  <Users className="w-6 h-6 sm:w-8 sm:h-8 text-white stroke-[1.8]" />
-                </div>
-                <span className="text-[10px] sm:text-xs font-bold text-white leading-tight block">
-                  Personal<br />Guidance
-                </span>
-              </div>
+          {/* Left Hero Details */}
+          <div className="space-y-2 relative z-10 max-w-xl">
+            <div className="inline-block bg-white/20 backdrop-blur-xs text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
+              Competitive Exams
             </div>
-          </div>
-        </div>
-
-        <div className="w-full bg-[#F4B942] py-2 px-4 shadow-md relative z-20 text-center">
-          <span className="text-[#0B1E3D] font-black text-xs sm:text-sm tracking-widest uppercase font-heading">
-            {bannerStripTagline}
-          </span>
-        </div>
-      </section>
-
-      {/* ========================================================
-          1. "SELECT YOUR STATE" CARD (EXACT MATCH TO REFERENCE)
-      ======================================================== */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="bg-[#F0F7FF] rounded-2xl p-4 sm:p-6 border border-[#BEE3F8] shadow-xs space-y-3">
-          <div>
-            <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-[#1769D2] block">
-              PREPARE FOR STATE & CENTRAL EXAMS
-            </span>
-            <h2 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif tracking-tight mt-0.5">
-              Select Your State
-            </h2>
-            <p className="text-xs text-slate-600 leading-relaxed mt-1">
-              Choose your state to filter and explore the relevant government exams, entrance exams, and syllabus available for your state.
+            <h1 className="text-2xl sm:text-4xl font-black font-serif text-white tracking-tight leading-tight">
+              Your Government Job Journey
+            </h1>
+            <p className="text-xs sm:text-sm font-bold text-emerald-100 flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span>IBPS</span>
+              <span>•</span>
+              <span>SBI</span>
+              <span>•</span>
+              <span>RBI</span>
+              <span>•</span>
+              <span>SSC</span>
+              <span>•</span>
+              <span>RRB</span>
+              <span>•</span>
+              <span>LIC</span>
             </p>
           </div>
 
-          <div className="space-y-1.5 pt-1">
-            <label className="block text-xs font-black text-slate-800">
-              Your State / UT
-            </label>
-            <div className="relative">
-              <select
-                value={selectedState}
-                onChange={(e) => setSelectedState(e.target.value)}
-                className="w-full appearance-none px-3.5 py-2.5 rounded-xl border border-slate-300 bg-white text-xs sm:text-sm font-bold text-[#0B2545] shadow-xs cursor-pointer focus:ring-2 focus:ring-[#1769D2] outline-none"
-              >
-                <option value="All India">All India</option>
-                {availableStates
-                  .filter((s) => s !== 'All India')
-                  .map((st) => (
-                    <option key={st} value={st}>
-                      {st}
-                    </option>
-                  ))}
-              </select>
-              <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-600">
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
+          {/* Right Government / Bank Classical Building SVG Graphic */}
+          <div className="relative z-10 shrink-0 hidden xs:block">
+            <ClassicalBuildingGraphic />
           </div>
-
-          {selectedState !== 'All India' && (
-            <div className="flex items-center justify-between pt-1 text-xs">
-              <span className="text-[#1769D2] font-bold">
-                Filtered by: <u>{selectedState}</u>
-              </span>
-              <button
-                type="button"
-                onClick={() => setSelectedState('All India')}
-                className="inline-flex items-center gap-1 text-rose-600 font-bold hover:underline"
-              >
-                <RotateCcw className="w-3 h-3" /> Reset Filter
-              </button>
-            </div>
-          )}
         </div>
       </section>
 
       {/* ========================================================
-          2. OUR COACHING PROGRAMS (3 DISTINCT CARDS WITH 4x2 TILES)
+          2. STATE SELECTOR & SEARCH BAR + LATEST UPDATES TICKER
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6 space-y-4 relative">
-        <div className="space-y-1">
+      <section className="max-w-5xl mx-auto px-3 sm:px-6 space-y-2.5">
+        {/* Search Row */}
+        <div className="flex items-center gap-2">
+          {/* State Selector Pill */}
+          <div className="relative shrink-0">
+            <div className="border border-[#009E60] bg-white text-[#007044] font-bold text-xs sm:text-sm rounded-xl px-3 sm:px-3.5 py-2.5 flex items-center gap-1.5 shadow-2xs hover:bg-emerald-50/50 transition-colors cursor-pointer">
+              <span className="w-2 h-2 rounded-full bg-[#009E60] shrink-0" />
+              <span className="whitespace-nowrap max-w-[90px] sm:max-w-none truncate">
+                {selectedState || 'Select State'}
+              </span>
+              <ChevronDown className="w-3.5 h-3.5 text-[#007044] shrink-0" />
+            </div>
+            {/* Native Overlaid Select for zero-lag mobile/desktop state changes */}
+            <select
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
+              aria-label="Select State"
+            >
+              <option value="All India">All India</option>
+              {availableStates
+                .filter((s) => s !== 'All India')
+                .map((st) => (
+                  <option key={st} value={st}>
+                    {st}
+                  </option>
+                ))}
+            </select>
+          </div>
+
+          {/* Search Input Bar */}
+          <form onSubmit={handleSearchSubmit} className="flex-1 relative flex items-center">
+            <div className="relative w-full">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search for courses, exams, services..."
+                className="w-full bg-white border border-slate-200 rounded-xl pl-9.5 pr-20 py-2.5 text-xs sm:text-sm font-medium text-slate-800 placeholder-slate-400 shadow-2xs outline-none focus:border-[#009E60] focus:ring-1 focus:ring-[#009E60]"
+              />
+              <button
+                type="submit"
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 bg-[#008A5E] hover:bg-[#007044] text-white font-bold text-xs px-3 sm:px-4 py-1.5 rounded-lg transition-colors cursor-pointer"
+              >
+                Search
+              </button>
+            </div>
+          </form>
+        </div>
+
+        {/* Ticker / Marquee Banner */}
+        <div className="flex items-center gap-2 bg-slate-100/90 border border-slate-200/80 rounded-xl px-3 py-1.5 overflow-hidden text-xs">
+          <div className="bg-[#0B2545] text-white text-[9.5px] font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0">
+            Latest Updates
+          </div>
+          <div className="overflow-hidden whitespace-nowrap text-slate-600 font-medium text-[11px] sm:text-xs">
+            <span className="inline-block animate-marquee pl-4">
+              New Batches for JAIIB, CAIIB, IBPS PO & SBI PO starting this week! • Admissions Open 2026 • Live Zoom Classes with Senior Ex-Bankers • 10–20 Real Pattern Online Mock Tests
+            </span>
+          </div>
+        </div>
+      </section>
+
+      {/* ========================================================
+          3. TWO PROMINENT ACTION CARDS (NOTIFICATION & GUIDANCE)
+      ======================================================== */}
+      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-4">
+          {/* Card 1: Notification */}
+          <Link
+            to="/student/live-classes"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#0284C7] to-[#0369A1] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-[#F4B942] text-[#0B1E3D] flex items-center justify-center shrink-0 shadow-xs">
+                <Bell className="w-4 h-4 sm:w-5 sm:h-5 fill-[#0B1E3D]" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-black text-xs sm:text-base leading-tight text-white truncate">
+                  Notification
+                </h4>
+                <p className="text-[9px] sm:text-xs text-blue-100 font-medium truncate">
+                  Exam Alerts & Latest Updates
+                </p>
+              </div>
+            </div>
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
+              <ArrowRight className="w-3.5 h-3.5 text-white" />
+            </div>
+          </Link>
+
+          {/* Card 2: Guidance */}
+          <Link
+            to="/enquiry"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#059669] to-[#047857] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-emerald-400/30 text-white flex items-center justify-center shrink-0 shadow-xs">
+                <GraduationCap className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <div className="min-w-0">
+                <h4 className="font-black text-xs sm:text-base leading-tight text-white truncate">
+                  Guidance
+                </h4>
+                <p className="text-[9px] sm:text-xs text-emerald-100 font-medium truncate">
+                  Personal Guidance & Courses
+                </p>
+              </div>
+            </div>
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform">
+              <ArrowRight className="w-3.5 h-3.5 text-white" />
+            </div>
+          </Link>
+        </div>
+      </section>
+
+      {/* ========================================================
+          4. "OUR COACHING PROGRAMS" (4 DISTINCT CARDS WITH 4x2 TILES)
+      ======================================================== */}
+      <section className="max-w-5xl mx-auto px-3 sm:px-6 space-y-3.5">
+        <div className="space-y-0.5">
           <h2 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif tracking-tight">
             Our Coaching Programs
           </h2>
           <p className="text-xs text-slate-600 leading-relaxed">
-            Choose your desired path and start preparing for bank, government, or entrance examinations.
+            Choose your career path and explore courses, entrance preparation, classes and exams.
           </p>
         </div>
 
-        {/* Card 1: Banker's Path */}
+        {/* Program 1: Competitive Exams */}
         <ProgramCard
-          title={settings?.bankersPathSection?.title || "Banker's Path"}
-          subtitle={settings?.bankersPathSection?.subtitle || "Banking • Insurance • Finance"}
-          courses={bankersCourses}
-          defaultTiles={defaultBankersTiles}
-          isExpanded={expandedSection.bankers}
-          onToggleExpand={() =>
-            setExpandedSection((prev) => ({ ...prev, bankers: !prev.bankers }))
-          }
-          pageLink="/bankers-path"
-          pageLinkLabel="Banker's Path Page"
-          fallbackColor="#008080"
-          loading={coursesLoading}
-          getTileShortName={getTileShortName}
-        />
-
-        {/* Card 2: Competitive Exams */}
-        <ProgramCard
-          title={settings?.competitiveExamsSection?.title || settings?.competitiveSection?.title || "Competitive Exams"}
-          subtitle={settings?.competitiveExamsSection?.subtitle || settings?.competitiveSection?.subtitle || "Government Jobs • Banking • Railways • Defence & More"}
+          title={settings?.competitiveExamsSection?.title || settings?.competitiveSection?.title || 'Competitive Exams'}
+          subtitle={settings?.competitiveExamsSection?.subtitle || 'Govt. Jobs, Banking & Public Sector Exams'}
           courses={competitiveCourses}
           defaultTiles={defaultCompetitiveTiles}
           isExpanded={expandedSection.competitive}
@@ -735,15 +663,13 @@ export const HomePage = () => {
           }
           pageLink="/competitive-exams"
           pageLinkLabel="Competitive Exams Page"
-          fallbackColor="#7A1D5A"
-          loading={coursesLoading}
-          getTileShortName={getTileShortName}
+          fallbackColor="#FEF3C7"
         />
 
-        {/* Card 3: Entrance Exams */}
+        {/* Program 2: Entrance Exams */}
         <ProgramCard
-          title={settings?.entranceExamsSection?.title || "Entrance Exams"}
-          subtitle={settings?.entranceExamsSection?.subtitle || "Engineering • Medical • Central Universities & State CETs"}
+          title={settings?.entranceExamsSection?.title || 'Entrance Exams'}
+          subtitle={settings?.entranceExamsSection?.subtitle || 'Engineering, Medical & Professional Entrance'}
           courses={entranceCourses}
           defaultTiles={defaultEntranceTiles}
           isExpanded={expandedSection.entrance}
@@ -752,126 +678,332 @@ export const HomePage = () => {
           }
           pageLink="/entrance-exams"
           pageLinkLabel="Entrance Exams Page"
-          fallbackColor="#48631E"
-          loading={coursesLoading}
-          getTileShortName={getTileShortName}
+          fallbackColor="#DCFCE7"
+        />
+
+        {/* Program 3: Banker's Path */}
+        <ProgramCard
+          title={settings?.bankersPathSection?.title || "Banker's Path"}
+          subtitle={settings?.bankersPathSection?.subtitle || 'Banking, Insurance & Finance Certifications'}
+          courses={bankersCourses}
+          defaultTiles={defaultBankersTiles}
+          isExpanded={expandedSection.bankers}
+          onToggleExpand={() =>
+            setExpandedSection((prev) => ({ ...prev, bankers: !prev.bankers }))
+          }
+          pageLink="/bankers-path"
+          pageLinkLabel="Banker's Path Page"
+          fallbackColor="#E0F2FE"
+        />
+
+        {/* Program 4: Tuitions (NEW from reference) */}
+        <ProgramCard
+          title="Tuitions"
+          subtitle="School, Intermediate & Degree Tuitions"
+          courses={tuitionsCourses}
+          defaultTiles={defaultTuitionsTiles}
+          isExpanded={expandedSection.tuitions}
+          onToggleExpand={() =>
+            setExpandedSection((prev) => ({ ...prev, tuitions: !prev.tuitions }))
+          }
+          pageLink="/bankers-path"
+          pageLinkLabel="Tuitions Page"
+          fallbackColor="#EDE9FE"
         />
       </section>
 
       {/* ========================================================
-          3. 4 ACTION CARDS (2x2 GRID MATCHING REFERENCE UI)
+          5. 4 ACTION CARDS (2x2 GRID MATCHING REFERENCE UI)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="grid grid-cols-2 gap-2 sm:gap-3">
-          {actionCards.map((card) => {
-            const Icon = card.icon;
-            return (
-              <Link
-                key={card.title}
-                to={card.path}
-                className="p-2.5 sm:p-4 rounded-xl text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
-                style={{ backgroundColor: card.bgColor }}
-              >
-                <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <div className="w-7 h-7 sm:w-10 sm:h-10 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                    <Icon className="w-3.5 h-3.5 sm:w-5 sm:h-5 text-white" />
-                  </div>
-                  <div className="text-left min-w-0">
-                    <h4 className="font-black text-xs sm:text-sm leading-tight text-white truncate">
-                      {card.title}
-                    </h4>
-                    <p className="text-[8px] sm:text-[10px] text-white/90 font-medium truncate">
-                      {card.subtitle}
-                    </p>
-                  </div>
-                </div>
-                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/40 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform ml-1">
-                  <ArrowRight className="w-3 h-3 text-white" />
-                </div>
-              </Link>
-            );
-          })}
+      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
+          {/* Card 1: Enquiry & Demo */}
+          <Link
+            to="/enquiry"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#1D4ED8] to-[#2563EB] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <div className="text-left min-w-0">
+                <h4 className="font-black text-xs sm:text-sm leading-tight text-white truncate">
+                  Enquiry & Demo
+                </h4>
+                <p className="text-[8.5px] sm:text-[10px] text-white/90 font-medium truncate">
+                  Offline Free Demo
+                </p>
+              </div>
+            </div>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/40 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform ml-1">
+              <ArrowRight className="w-3 h-3 text-white" />
+            </div>
+          </Link>
+
+          {/* Card 2: Materials */}
+          <Link
+            to="/recorded-classes"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#D97706] to-[#F59E0B] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              </div>
+              <div className="text-left min-w-0">
+                <h4 className="font-black text-xs sm:text-sm leading-tight text-white truncate">
+                  Materials
+                </h4>
+                <p className="text-[8.5px] sm:text-[10px] text-white/90 font-medium truncate">
+                  Free PDFs
+                </p>
+              </div>
+            </div>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/40 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform ml-1">
+              <ArrowRight className="w-3 h-3 text-white" />
+            </div>
+          </Link>
+
+          {/* Card 3: Classes */}
+          <Link
+            to="/online-classes"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#059669] to-[#10B981] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white text-[#059669] flex items-center justify-center shrink-0 shadow-xs">
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-[#059669] text-[#059669] translate-x-0.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <h4 className="font-black text-xs sm:text-sm leading-tight text-white truncate">
+                  Classes
+                </h4>
+                <p className="text-[8.5px] sm:text-[10px] text-white/90 font-medium truncate">
+                  Learn Online
+                </p>
+              </div>
+            </div>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/40 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform ml-1">
+              <ArrowRight className="w-3 h-3 text-white" />
+            </div>
+          </Link>
+
+          {/* Card 4: Exams */}
+          <Link
+            to="/mock-tests"
+            className="p-3 sm:p-4 rounded-2xl bg-gradient-to-r from-[#7C3AED] to-[#9333EA] text-white shadow-xs hover:shadow-md hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-between group"
+          >
+            <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-white text-[#7C3AED] flex items-center justify-center shrink-0 shadow-xs">
+                <Play className="w-4 h-4 sm:w-5 sm:h-5 fill-[#7C3AED] text-[#7C3AED] translate-x-0.5" />
+              </div>
+              <div className="text-left min-w-0">
+                <h4 className="font-black text-xs sm:text-sm leading-tight text-white truncate">
+                  Exams
+                </h4>
+                <p className="text-[8.5px] sm:text-[10px] text-white/90 font-medium truncate">
+                  Model Papers & Mock Tests
+                </p>
+              </div>
+            </div>
+            <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full border border-white/40 flex items-center justify-center shrink-0 group-hover:translate-x-0.5 transition-transform ml-1">
+              <ArrowRight className="w-3 h-3 text-white" />
+            </div>
+          </Link>
         </div>
       </section>
 
       {/* ========================================================
-          4. "LEARN WITH A CLEAR PLAN" (EXACT MATCH TO REFERENCE)
+          6. "LEARN WITH A CLEAR PLAN" (EXACT MATCH TO REFERENCE)
       ======================================================== */}
-      <section className="max-w-5xl mx-auto px-4 sm:px-6">
-        <div className="bg-white rounded-2xl p-4 sm:p-6 border border-slate-200/80 shadow-xs space-y-4">
+      <section className="max-w-5xl mx-auto px-3 sm:px-6">
+        <div className="bg-white rounded-3xl p-4 sm:p-6 border border-slate-200/90 shadow-xs space-y-5">
           {/* Header with graduation cap badge */}
           <div className="flex items-start justify-between gap-4">
             <div>
               <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-emerald-600 flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                {settings?.clearPlanSection?.badge || 'PREPARE WITH STRUCTURED METHODOLOGY'}
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                STRUCTURED LEARNING METHODOLOGY
               </span>
               <h2 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif tracking-tight mt-0.5">
-                {settings?.clearPlanSection?.title || 'Learn with a Clear Plan'}
+                Learn with a Clear Plan
               </h2>
               <p className="text-xs text-slate-600 leading-relaxed mt-1">
-                {settings?.clearPlanSection?.description ||
-                  'Follow our proven, step-by-step methodology to crack your exams with confidence.'}
+                Choose your goal. Build your knowledge. Practice with your dream.
               </p>
             </div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-tr from-[#0B2545] to-[#1976D2] text-[#F4B942] flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-[#1976D2] text-white flex items-center justify-center shrink-0 shadow-md">
               <GraduationCap className="w-6 h-6 text-[#F4B942]" />
             </div>
           </div>
 
           {/* 4 Feature Cards (2x2 Grid) */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 pt-1">
-            {planFeatures.map((item) => {
-              const Icon = item.icon;
-              return (
-                <div
-                  key={item.title}
-                  className={`p-3 sm:p-4 rounded-xl ${item.cardBg} border ${item.border} space-y-1.5 flex flex-col justify-between`}
-                >
-                  <div className="space-y-1 sm:space-y-1.5">
-                    <div
-                      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg ${item.iconBg} flex items-center justify-center`}
-                    >
-                      <Icon
-                        className="w-3.5 h-3.5 sm:w-4 sm:h-4"
-                        style={{ color: item.iconColor }}
-                      />
-                    </div>
-                    <h4 className="font-extrabold text-xs sm:text-sm text-[#0B2545]">
-                      {item.title}
-                    </h4>
-                    <p className="text-[10px] sm:text-[11px] text-slate-600 leading-relaxed">
-                      {item.desc}
-                    </p>
-                  </div>
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-1">
+            {/* Card 1: Study Materials */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F0F7FF] border border-[#D0E6FD] space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="w-8 h-8 rounded-xl bg-blue-100 text-[#1769D2] flex items-center justify-center">
+                  <FileText className="w-4 h-4 text-[#1769D2]" />
                 </div>
-              );
-            })}
+                <h4 className="font-extrabold text-xs sm:text-sm text-[#0B2545]">
+                  Study Materials
+                </h4>
+                <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed">
+                  Keep notes and learning resources in one place.
+                </p>
+              </div>
+              <Link
+                to="/recorded-classes"
+                className="text-[10px] sm:text-[11px] font-black text-[#1769D2] hover:underline uppercase tracking-wide inline-flex items-center gap-1 pt-1"
+              >
+                <span>EXPLORE NOTES</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Card 2: Classes */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#EAF9F1] border border-[#D1F2DF] space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+                  <MonitorPlay className="w-4 h-4 text-emerald-600" />
+                </div>
+                <h4 className="font-extrabold text-xs sm:text-sm text-[#0B2545]">
+                  Classes
+                </h4>
+                <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed">
+                  Access live and recorded learning sessions.
+                </p>
+              </div>
+              <Link
+                to="/online-classes"
+                className="text-[10px] sm:text-[11px] font-black text-emerald-600 hover:underline uppercase tracking-wide inline-flex items-center gap-1 pt-1"
+              >
+                <span>JOIN SESSIONS</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Card 3: Practice Exams */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#F6EEFD] border border-[#E9D5FA] space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-100 text-purple-600 flex items-center justify-center">
+                  <ClipboardList className="w-4 h-4 text-purple-600" />
+                </div>
+                <h4 className="font-extrabold text-xs sm:text-sm text-[#0B2545]">
+                  Practice Exams
+                </h4>
+                <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed">
+                  Prepare with mock tests and exam-style practice.
+                </p>
+              </div>
+              <Link
+                to="/mock-tests"
+                className="text-[10px] sm:text-[11px] font-black text-purple-600 hover:underline uppercase tracking-wide inline-flex items-center gap-1 pt-1"
+              >
+                <span>TAKE MOCK TESTS</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
+
+            {/* Card 4: Career Guidance */}
+            <div className="p-3.5 sm:p-4 rounded-2xl bg-[#FFF8EC] border border-[#FEE7C3] space-y-2 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="w-8 h-8 rounded-xl bg-amber-100 text-amber-600 flex items-center justify-center">
+                  <Compass className="w-4 h-4 text-amber-600" />
+                </div>
+                <h4 className="font-extrabold text-xs sm:text-sm text-[#0B2545]">
+                  Career Guidance
+                </h4>
+                <p className="text-[10px] sm:text-xs text-slate-600 leading-relaxed">
+                  Find a course path that matches your next goal.
+                </p>
+              </div>
+              <Link
+                to="/enquiry"
+                className="text-[10px] sm:text-[11px] font-black text-amber-600 hover:underline uppercase tracking-wide inline-flex items-center gap-1 pt-1"
+              >
+                <span>GET GUIDANCE</span>
+                <ArrowRight className="w-3 h-3" />
+              </Link>
+            </div>
           </div>
 
-          {/* 3 Step-by-Step Roadmap items */}
-          <div className="pt-2 space-y-2">
-            {roadmapSteps.map((stepItem) => (
-              <div
-                key={stepItem.step}
-                className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100"
-              >
-                <span className="w-7 h-7 rounded-full bg-blue-100 text-[#1769D2] font-black text-xs flex items-center justify-center shrink-0">
-                  {stepItem.step}
-                </span>
+          {/* Sub-section: YOUR LEARNING JOURNEY */}
+          <div className="pt-2 border-t border-slate-100 space-y-2.5">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-black text-[#0B2545] uppercase tracking-wider text-[11px]">
+                YOUR LEARNING JOURNEY
+              </span>
+              <span className="text-slate-500 font-medium text-[11px]">
+                Three simple steps
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              {/* Step 1 */}
+              <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#1769D2] font-black text-xs flex items-center justify-center shrink-0">
+                  01
+                </div>
                 <div>
-                  <h5 className="font-bold text-xs text-[#0B2545]">
-                    {stepItem.title}
-                  </h5>
-                  <p className="text-[10px] text-slate-500">
-                    {stepItem.desc}
-                  </p>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Choose a Course
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0B2545]">
+                    Banker's Path, Competitive or Entrance Exams.
+                  </div>
                 </div>
               </div>
-            ))}
+
+              {/* Step 2 */}
+              <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#1769D2] font-black text-xs flex items-center justify-center shrink-0">
+                  02
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Learn & Practice
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0B2545]">
+                    Use classes, study materials and practice exams.
+                  </div>
+                </div>
+              </div>
+
+              {/* Step 3 */}
+              <div className="flex items-center gap-3 p-2.5 sm:p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+                <div className="w-8 h-8 rounded-lg bg-blue-100 text-[#1769D2] font-black text-xs flex items-center justify-center shrink-0">
+                  03
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                    Move Toward Your Goal
+                  </div>
+                  <div className="text-xs sm:text-sm font-bold text-[#0B2545]">
+                    Stay consistent and track your preparation.
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* ========================================================
+          7. FLOATING ACTION WIDGET: "Chat with us" (EXACT REFERENCE)
+      ======================================================== */}
+      <a
+        href={
+          settings?.socialLinks?.whatsapp ||
+          `https://wa.me/${(settings?.contactInfo?.phone || '919876543210').replace(/[^0-9]/g, '')}`
+        }
+        target="_blank"
+        rel="noreferrer"
+        className="fixed bottom-5 right-4 sm:right-6 z-50 inline-flex items-center gap-2 bg-[#0B2545] hover:bg-[#12356B] text-white px-4 py-2.5 rounded-full shadow-2xl text-xs sm:text-sm font-bold border border-white/20 active:scale-95 transition-all cursor-pointer"
+        aria-label="Chat with Ranvi Institutions"
+      >
+        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+        <MessageSquare className="w-4 h-4 text-white" />
+        <span>Chat with us</span>
+      </a>
     </div>
   );
 };

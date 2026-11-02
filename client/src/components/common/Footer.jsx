@@ -17,6 +17,9 @@ import {
   Star,
   LayoutList,
   MessageSquare,
+  User,
+  Clock,
+  CheckCircle2,
 } from 'lucide-react';
 import { WhatsAppIcon, Instagram, Facebook, Youtube, Linkedin } from './SocialIcons';
 
@@ -24,111 +27,66 @@ export const Footer = () => {
   const { settings } = useSiteSettings();
   const contact = settings?.contactInfo || {
     address: 'Vijayawada, Andhra Pradesh',
-    phone: '9876543210',
-    email: 'bankerspath01@gmail.com',
+    phone: '+91 98765 43210',
+    email: 'admissions@ranviinstitutions.com',
   };
 
   return (
-    <footer className="bg-[#040D1A] text-slate-200 border-t border-slate-800">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-8">
+    <footer className="bg-[#06152B] text-slate-200 border-t border-slate-800">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8 sm:py-10 space-y-8">
         {/* ========================================================
-            1. TOP GRADUATION BANNER MATCHING REFERENCE IMAGE
+            1. CONVOCATION BANNER MATCHING EXACT REFERENCE IMAGE
         ======================================================== */}
-        <div className="relative rounded-2xl overflow-hidden bg-gradient-to-r from-[#0E2849] via-[#1B4373] to-[#0E2849] p-4 sm:p-6 text-white border border-blue-400/30 shadow-2xl">
-          {/* Subtle decorative background glow */}
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.12)_0%,transparent_70%)] pointer-events-none"></div>
-
-          <div className="relative z-10 flex flex-col items-center text-center space-y-3">
-            {/* Center Emblem & Brand Name */}
-            <div className="flex items-center gap-3">
-              <img
-                src="/logo.png"
-                alt="Ranvi Institutions Logo"
-                className="w-12 h-12 sm:w-14 sm:h-14 object-contain drop-shadow-md rounded-full bg-white/10 p-1"
-                onError={(e) => {
-                  e.target.style.display = 'none';
-                }}
-              />
-              <div className="text-left">
-                <h3 className="text-lg sm:text-2xl font-black font-serif tracking-wide text-white drop-shadow-sm uppercase">
-                  Ranvi Institutions
-                </h3>
-                <div className="inline-block bg-[#F4B942] text-[#0A2540] text-[9px] sm:text-[10px] font-black px-2.5 py-0.5 rounded-full tracking-wider uppercase mt-0.5">
-                  Your Next Career Milestones
-                </div>
-              </div>
-            </div>
-
-            {/* Call / WhatsApp CTA Button */}
-            <a
-              href={`tel:${contact.phone?.replace(/[^0-9+]/g, '')}`}
-              className="inline-flex items-center gap-2 bg-[#F4B942] hover:bg-amber-300 text-[#0A2540] font-black text-xs sm:text-sm px-5 py-2.5 rounded-full shadow-lg transition-transform hover:scale-105 active:scale-95"
-            >
-              <Phone className="w-3.5 h-3.5 fill-[#0A2540]" />
-              <span>Call / WhatsApp: {contact.phone || '9876543210'}</span>
-            </a>
-
-            {/* 4 Trust Badges Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full pt-2 text-[10px] sm:text-[11px] font-bold text-blue-100 border-t border-white/15">
-              <div className="flex items-center justify-center gap-1.5">
-                <Star className="w-3.5 h-3.5 fill-[#F4B942] text-[#F4B942] shrink-0" />
-                <span>100% Exam Aligned</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>Verified Mentors</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <Trophy className="w-3.5 h-3.5 text-amber-300 shrink-0" />
-                <span>High Success Rate</span>
-              </div>
-              <div className="flex items-center justify-center gap-1.5">
-                <Smartphone className="w-3.5 h-3.5 text-cyan-300 shrink-0" />
-                <span>Single-Device Secure</span>
-              </div>
-            </div>
-          </div>
+        <div className="relative rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border border-blue-400/20 bg-[#0E2849]">
+          <img
+            src="/assets/hero-banner.png"
+            alt="Ranvi Institutions Admissions & Batches"
+            onError={(e) => {
+              e.currentTarget.src = '/hero-banner.png';
+            }}
+            className="w-full h-auto object-cover rounded-2xl sm:rounded-3xl"
+          />
         </div>
 
         {/* ========================================================
-            2. QUICK LINKS & STUDENT SERVICES (2 COLUMNS)
+            2. TWO COLUMNS: PROGRAMS & STUDENT PORTAL
         ======================================================== */}
-        <div className="grid grid-cols-2 sm:grid-cols-2 gap-6">
-          {/* Column 1: Quick Links */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-8">
+          {/* Column 1: PROGRAMS */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-extrabold text-sm uppercase tracking-wider">
-              <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs">
-                <LayoutList className="w-3.5 h-3.5 text-white" />
+            <div className="flex items-center gap-2 text-white font-black text-xs sm:text-sm uppercase tracking-wider">
+              <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs shrink-0">
+                <BookOpen className="w-3.5 h-3.5 text-white" />
               </span>
-              <span>Quick Links</span>
+              <span>Programs</span>
             </div>
             <ul className="divide-y divide-white/10 text-xs text-slate-300 font-medium">
               <li>
-                <Link to="/" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
+                <Link to="/" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>Home</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
+                <Link to="/about" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>About Us</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/bankers-path" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
+                <Link to="/bankers-path" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>Courses</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/about" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
-                  <span>Gallery</span>
+                <Link to="/bankers-path" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                  <span>Pricing</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/contact" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
+                <Link to="/contact" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>Contact Us</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
@@ -136,42 +94,42 @@ export const Footer = () => {
             </ul>
           </div>
 
-          {/* Column 2: Student Services */}
+          {/* Column 2: STUDENT PORTAL */}
           <div className="space-y-3">
-            <div className="flex items-center gap-2 text-white font-extrabold text-sm uppercase tracking-wider">
-              <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs">
-                <GraduationCap className="w-3.5 h-3.5 text-white" />
+            <div className="flex items-center gap-2 text-white font-black text-xs sm:text-sm uppercase tracking-wider">
+              <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs shrink-0">
+                <User className="w-3.5 h-3.5 text-white" />
               </span>
-              <span>Student Services</span>
+              <span>Student Portal</span>
             </div>
             <ul className="divide-y divide-white/10 text-xs text-slate-300 font-medium">
               <li>
-                <Link to="/faculty" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
-                  <span>Mentors & Experts</span>
+                <Link to="/register" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                  <span>Register</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/enquiry" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
-                  <span>Admissions</span>
+                <Link to="/login" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                  <span>Login</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/recorded-classes" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
-                  <span>Syllabus</span>
+                <Link to="/student/my-courses" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                  <span>My Courses</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/online-classes" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
+                <Link to="/student/live-classes" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
                   <span>Live Classes</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
               <li>
-                <Link to="/faq" className="flex items-center justify-between py-2 hover:text-[#F4B942] transition-colors">
-                  <span>Help Centre</span>
+                <Link to="/student/mock-tests" className="flex items-center justify-between py-2.5 hover:text-[#F4B942] transition-colors">
+                  <span>Mock Tests</span>
                   <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
                 </Link>
               </li>
@@ -183,44 +141,57 @@ export const Footer = () => {
             3. CONTACT & SUPPORT SECTION (EXACT REFERENCE UI)
         ======================================================== */}
         <div className="space-y-4">
-          <div className="flex items-center gap-2 text-white font-extrabold text-sm uppercase tracking-wider">
-            <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs">
+          <div className="flex items-center gap-2 text-white font-black text-xs sm:text-sm uppercase tracking-wider">
+            <span className="w-6 h-6 rounded-md bg-[#1976D2] flex items-center justify-center text-white text-xs shrink-0">
               <MessageSquare className="w-3.5 h-3.5 text-white" />
             </span>
             <span>Contact & Support</span>
           </div>
 
-          <div className="bg-[#08182D] rounded-2xl p-4 sm:p-5 border border-blue-900/40 space-y-3 text-xs">
+          <div className="bg-[#0B1E38] rounded-2xl p-4 sm:p-5 border border-blue-900/50 space-y-3 text-xs shadow-md">
             <div>
               <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
-                Call / WhatsApp
+                Location & Campus
               </span>
-              <a
-                href={`tel:${contact.phone?.replace(/[^0-9+]/g, '')}`}
-                className="text-white font-extrabold text-sm hover:text-[#F4B942] transition-colors"
-              >
-                {contact.phone || '9876543210'}
-              </a>
-            </div>
-
-            <div className="border-t border-white/5 pt-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
-                Email
-              </span>
-              <a
-                href={`mailto:${contact.email || 'bankerspath01@gmail.com'}`}
-                className="text-white font-bold text-xs hover:text-[#F4B942] transition-colors"
-              >
-                {contact.email || 'bankerspath01@gmail.com'}
-              </a>
-            </div>
-
-            <div className="border-t border-white/5 pt-2">
-              <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
-                Location
-              </span>
-              <span className="text-white font-bold text-xs block">
+              <span className="text-white font-bold text-xs block leading-relaxed">
                 {contact.address || 'Vijayawada, Andhra Pradesh'}
+              </span>
+              <span className="text-[11px] text-slate-400 block">
+                Ranvi Knowledge Tower, MG Road Coaching Hub
+              </span>
+            </div>
+
+            <div className="border-t border-white/5 pt-2.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
+                  Call / WhatsApp
+                </span>
+                <a
+                  href={`tel:${contact.phone?.replace(/[^0-9+]/g, '')}`}
+                  className="text-white font-extrabold text-sm hover:text-[#F4B942] transition-colors"
+                >
+                  {contact.phone || '+91 98765 43210'}
+                </a>
+              </div>
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
+                  Email
+                </span>
+                <a
+                  href={`mailto:${contact.email || 'admissions@ranviinstitutions.com'}`}
+                  className="text-white font-bold text-xs hover:text-[#F4B942] transition-colors"
+                >
+                  {contact.email || 'admissions@ranviinstitutions.com'}
+                </a>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-2">
+              <span className="text-[10px] font-black uppercase tracking-wider text-cyan-400 block mb-0.5">
+                Working Hours
+              </span>
+              <span className="text-slate-300 font-medium text-xs">
+                {contact.workingHours || 'Mon - Sat: 8:00 AM - 8:00 PM'}
               </span>
             </div>
           </div>
@@ -238,7 +209,7 @@ export const Footer = () => {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Connect with us on WhatsApp"
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#08182D] hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0B1E38] hover:bg-[#25D366]/20 border border-white/10 hover:border-[#25D366]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
               >
                 <span className="w-6 h-6 rounded-lg bg-[#25D366] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <WhatsAppIcon className="w-3.5 h-3.5 text-white" />
@@ -252,7 +223,7 @@ export const Footer = () => {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Watch Ranvi Institutions on YouTube"
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#08182D] hover:bg-[#FF0000]/20 border border-white/10 hover:border-[#FF0000]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0B1E38] hover:bg-[#FF0000]/20 border border-white/10 hover:border-[#FF0000]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
               >
                 <span className="w-6 h-6 rounded-lg bg-[#FF0000] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <Youtube className="w-3.5 h-3.5 text-white" />
@@ -266,7 +237,7 @@ export const Footer = () => {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Follow Ranvi Institutions on Instagram"
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#08182D] hover:bg-pink-600/20 border border-white/10 hover:border-pink-500/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0B1E38] hover:bg-pink-600/20 border border-white/10 hover:border-pink-500/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
               >
                 <span className="w-6 h-6 rounded-lg bg-gradient-to-tr from-amber-500 via-rose-500 to-purple-500 text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <Instagram className="w-3.5 h-3.5 text-white" />
@@ -280,7 +251,7 @@ export const Footer = () => {
                 target="_blank"
                 rel="noreferrer"
                 aria-label="Like Ranvi Institutions on Facebook"
-                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#08182D] hover:bg-[#1877F2]/20 border border-white/10 hover:border-[#1877F2]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
+                className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-[#0B1E38] hover:bg-[#1877F2]/20 border border-white/10 hover:border-[#1877F2]/50 text-slate-200 text-xs font-bold transition-all shadow-xs group"
               >
                 <span className="w-6 h-6 rounded-lg bg-[#1877F2] text-white flex items-center justify-center shrink-0 shadow-xs group-hover:scale-110 transition-transform">
                   <Facebook className="w-3.5 h-3.5 text-white" />
@@ -292,46 +263,46 @@ export const Footer = () => {
         </div>
 
         {/* ========================================================
-            4. 4 TRUST BADGES IN 2x2 GRID
+            4. 4 TRUST BADGES IN 2x2 GRID MATCHING REFERENCE
         ======================================================== */}
         <div className="grid grid-cols-2 sm:grid-cols-2 gap-3 pt-2">
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#08182D]/70 border border-white/10">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0B1E38]/80 border border-white/10">
             <div className="w-9 h-9 rounded-xl bg-amber-400/10 border border-amber-400/20 flex items-center justify-center shrink-0">
               <ShieldCheck className="w-5 h-5 text-[#F4B942]" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-white">Single-Device Protection</div>
-              <div className="text-[10px] text-slate-400">Secured Student Account</div>
+              <div className="text-xs font-black text-white">Advanced Security</div>
+              <div className="text-[10px] text-slate-400">Single Device Protection</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#08182D]/70 border border-white/10">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0B1E38]/80 border border-white/10">
             <div className="w-9 h-9 rounded-xl bg-emerald-400/10 border border-emerald-400/20 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-5 h-5 text-emerald-400" />
+              <Clock className="w-5 h-5 text-emerald-400" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-white">Ex-Banker Mentors</div>
-              <div className="text-[10px] text-slate-400">Learn From Industry Veterans</div>
+              <div className="text-xs font-black text-white">Instant Scoring</div>
+              <div className="text-[10px] text-slate-400">Real-Time Performance</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#08182D]/70 border border-white/10">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0B1E38]/80 border border-white/10">
             <div className="w-9 h-9 rounded-xl bg-cyan-400/10 border border-cyan-400/20 flex items-center justify-center shrink-0">
-              <FileCheck2 className="w-5 h-5 text-cyan-400" />
+              <GraduationCap className="w-5 h-5 text-cyan-400" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-white">Exact Exam Pattern</div>
-              <div className="text-[10px] text-slate-400">10–20 Full-Length Mocks</div>
+              <div className="text-xs font-black text-white">Expert Faculty</div>
+              <div className="text-[10px] text-slate-400">Live Zoom Classes</div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#08182D]/70 border border-white/10">
+          <div className="flex items-center gap-3 p-3 rounded-xl bg-[#0B1E38]/80 border border-white/10">
             <div className="w-9 h-9 rounded-xl bg-purple-400/10 border border-purple-400/20 flex items-center justify-center shrink-0">
-              <Sparkles className="w-5 h-5 text-purple-400" />
+              <FileCheck2 className="w-5 h-5 text-purple-400" />
             </div>
             <div>
-              <div className="text-xs font-extrabold text-white">Result-Oriented Prep</div>
-              <div className="text-[10px] text-slate-400">Proven Rankers Track Record</div>
+              <div className="text-xs font-black text-white">Certified Courses</div>
+              <div className="text-[10px] text-slate-400">IIBF & Govt Exam Curricula</div>
             </div>
           </div>
         </div>
@@ -359,3 +330,5 @@ export const Footer = () => {
     </footer>
   );
 };
+
+export default Footer;

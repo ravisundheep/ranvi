@@ -15,7 +15,7 @@ const CategorySchema = new mongoose.Schema({
   },
   division: {
     type: String,
-    enum: ['BANKERS_PATH', 'COMPETITIVE_EXAMS', 'ENTRANCE_EXAMS'],
+    enum: ['BANKERS_PATH', 'COMPETITIVE_EXAMS', 'ENTRANCE_EXAMS', 'TUITIONS'],
     required: true,
   },
   description: {

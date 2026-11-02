@@ -153,7 +153,7 @@ export const Navbar = () => {
 
       {/* Main Header Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-20 sm:h-22 relative">
+        <div className="flex items-center justify-between h-16 sm:h-18 relative">
           {/* 1. Mobile Menu Icon (LEFT on mobile, hidden on xl+) */}
           <div className="flex xl:hidden items-center z-20">
             <button
@@ -161,10 +161,10 @@ export const Navbar = () => {
                 setMobileMenuOpen(!mobileMenuOpen);
                 setProfileDropdownOpen(false);
               }}
-              className="p-2 -ml-2 rounded-2xl text-[#0B1E3D] hover:bg-slate-100 active:scale-95 transition-all focus:outline-none"
+              className="w-10 h-10 rounded-xl bg-[#0B2545] hover:bg-[#12356B] text-white flex items-center justify-center shadow-xs active:scale-95 transition-all focus:outline-none cursor-pointer"
               aria-label="Toggle Navigation Menu"
             >
-              {mobileMenuOpen ? <X className="w-7 h-7" /> : <Menu className="w-7 h-7" />}
+              {mobileMenuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
             </button>
           </div>
 
@@ -431,16 +431,14 @@ export const Navbar = () => {
                   <span>Portal Login</span>
                 </Link>
 
-                {/* Default Skeleton Avatar Icon */}
+                {/* Default Avatar Icon - Solid Purple circle matching reference image */}
                 <button
                   onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
-                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-100 hover:bg-slate-200 border-2 border-dashed border-slate-300 hover:border-[#1769D2] text-slate-400 hover:text-[#1769D2] flex items-center justify-center relative transition-all duration-200 shadow-xs group focus:outline-none active:scale-95"
+                  className="w-10 h-10 rounded-full bg-[#5C45B3] hover:bg-[#4E37A4] text-white flex items-center justify-center relative transition-all duration-200 shadow-sm focus:outline-none active:scale-95 cursor-pointer"
                   title="Guest Profile / Account Options"
                   aria-label="Account Menu"
                 >
-                  <User className="w-5 h-5 text-slate-400 group-hover:text-[#1769D2] transition-colors" />
-                  {/* Subtle placeholder status indicator dot */}
-                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-slate-300 group-hover:bg-[#1769D2] border-2 border-white transition-colors" />
+                  <User className="w-5 h-5 text-white" />
                 </button>
 
                 {/* Guest Profile Dropdown */}
