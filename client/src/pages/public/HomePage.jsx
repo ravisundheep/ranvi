@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { courseService } from '../../services';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
+import { HeroBannerSlider } from '../../components/home/HeroBannerSlider';
 import {
   BookOpen,
   Users,
@@ -27,41 +28,6 @@ import {
   CheckCircle2,
   X,
 } from 'lucide-react';
-
-// ========================================================
-// 1. CLASSICAL PARLIAMENT / BANK BUILDING GRAPHIC (EXACT SVG)
-// ========================================================
-const ClassicalBuildingGraphic = () => (
-  <svg
-    viewBox="0 0 160 130"
-    className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 drop-shadow-md select-none"
-    fill="none"
-    xmlns="http://www.w3.org/2000/svg"
-  >
-    {/* Classical Pediment (Triangle Roof) */}
-    <path d="M80 18 L18 50 L142 50 Z" fill="#FFFFFF" />
-    {/* Architrave / Entablature */}
-    <rect x="14" y="50" width="132" height="10" rx="2" fill="#FFFFFF" />
-    {/* 5 Classical Columns */}
-    <rect x="24" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="50" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="74" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="98" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="124" y="64" width="12" height="42" rx="2" fill="#FFFFFF" />
-    {/* Steps / Stylobate Base */}
-    <rect x="14" y="110" width="132" height="8" rx="2" fill="#FFFFFF" />
-    <rect x="8" y="118" width="144" height="10" rx="2" fill="#F4B942" />
-    {/* Golden Checkmark Badge on Pediment */}
-    <circle cx="136" cy="22" r="13" fill="#F4B942" />
-    <path
-      d="M130 22 L134 26 L142 18"
-      stroke="#0B2545"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
 
 // ========================================================
 // 2. TILE HELPER FUNCTIONS (FAST CACHED TITLES & SUBTITLES)
@@ -482,42 +448,9 @@ export const HomePage = () => {
   return (
     <div className="space-y-4 sm:space-y-6 pb-16 bg-[#F8FAFC] overflow-x-hidden">
       {/* ========================================================
-          1. TOP HERO CARD: "Your Government Job Journey" (EXACT REFERENCE)
+          1. TOP HERO BANNER SLIDER: INFINITE SCROLL CAROUSEL
       ======================================================== */}
-      <section id="hero" className="scroll-mt-24 max-w-5xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4">
-        <div className="rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-white shadow-md bg-gradient-to-r from-[#009E60] via-[#059669] to-[#10B981] relative overflow-hidden flex items-center justify-between gap-4">
-          {/* Subtle background glow */}
-          <div className="absolute -right-10 -bottom-10 w-48 h-48 bg-white/10 rounded-full blur-2xl pointer-events-none" />
-
-          {/* Left Hero Details */}
-          <div className="space-y-2 relative z-10 max-w-xl">
-            <div className="inline-block bg-white/20 backdrop-blur-xs text-white text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded uppercase tracking-wider">
-              Competitive Exams
-            </div>
-            <h1 className="text-2xl sm:text-4xl font-black font-serif text-white tracking-tight leading-tight">
-              Your Government Job Journey
-            </h1>
-            <p className="text-xs sm:text-sm font-bold text-emerald-100 flex flex-wrap items-center gap-1.5 pt-0.5">
-              <span>IBPS</span>
-              <span>•</span>
-              <span>SBI</span>
-              <span>•</span>
-              <span>RBI</span>
-              <span>•</span>
-              <span>SSC</span>
-              <span>•</span>
-              <span>RRB</span>
-              <span>•</span>
-              <span>LIC</span>
-            </p>
-          </div>
-
-          {/* Right Government / Bank Classical Building SVG Graphic */}
-          <div className="relative z-10 shrink-0 hidden xs:block">
-            <ClassicalBuildingGraphic />
-          </div>
-        </div>
-      </section>
+      <HeroBannerSlider autoPlayInterval={3800} />
 
       {/* ========================================================
           2. STATE SELECTOR & SEARCH BAR + LATEST UPDATES TICKER
