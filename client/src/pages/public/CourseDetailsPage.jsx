@@ -149,8 +149,8 @@ export const CourseDetailsPage = () => {
             <div className="mb-4">
               <span className="text-xs text-slate-500 font-bold uppercase">Comprehensive Course Fee</span>
               <div className="flex items-baseline gap-2 mt-1">
-                <span className="text-3xl font-black text-[#12356B]">₹{course.fee?.toLocaleString('en-IN')}</span>
-                {course.originalPrice && course.originalPrice > course.fee && (
+                <span className="text-3xl font-black text-[#12356B]">₹{(course.fee ?? course.price ?? 0).toLocaleString('en-IN')}</span>
+                {course.originalPrice && course.originalPrice > (course.fee ?? course.price ?? 0) && (
                   <span className="text-sm text-slate-400 line-through">₹{course.originalPrice?.toLocaleString('en-IN')}</span>
                 )}
               </div>

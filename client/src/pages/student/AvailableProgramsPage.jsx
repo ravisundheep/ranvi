@@ -196,11 +196,11 @@ export const AvailableProgramsPage = () => {
                     <div className="text-[10px] text-slate-400 font-semibold uppercase">Program Fee</div>
                     <div className="flex items-baseline gap-1.5">
                       <span className="text-base font-black text-[#0B2545]">
-                        ₹{prog.price ? prog.price.toLocaleString('en-IN') : 'Free'}
+                        ₹{(prog.price ?? prog.fee) ? (prog.price ?? prog.fee).toLocaleString('en-IN') : 'Free'}
                       </span>
-                      {prog.originalPrice && prog.originalPrice > prog.price && (
+                      {prog.originalPrice && prog.originalPrice > (prog.price ?? prog.fee ?? 0) && (
                         <span className="text-xs text-slate-400 line-through">
-                          ₹{prog.originalPrice.toLocaleString('en-IN')}
+                          ₹{prog.originalPrice?.toLocaleString('en-IN')}
                         </span>
                       )}
                     </div>

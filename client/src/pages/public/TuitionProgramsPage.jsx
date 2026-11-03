@@ -189,9 +189,11 @@ export const TuitionProgramsPage = () => {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {programs.map((program) => {
+              const currentPrice = program.fee ?? program.price ?? 0;
+              const originalPrice = program.originalPrice ?? null;
               const discountPercent =
-                program.originalPrice && program.originalPrice > program.fee
-                  ? Math.round(((program.originalPrice - program.fee) / program.originalPrice) * 100)
+                originalPrice && originalPrice > currentPrice
+                  ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)
                   : null;
 
               const isSeatsLow =
@@ -276,11 +278,11 @@ export const TuitionProgramsPage = () => {
                       <div>
                         <div className="flex items-baseline gap-1.5">
                           <span className="text-lg sm:text-xl font-black text-[#0B2545]">
-                            ₹{program.fee.toLocaleString('en-IN')}
+                            ₹{currentPrice.toLocaleString('en-IN')}
                           </span>
-                          {program.originalPrice && program.originalPrice > program.fee && (
+                          {originalPrice && originalPrice > currentPrice && (
                             <span className="text-xs text-slate-400 line-through">
-                              ₹{program.originalPrice.toLocaleString('en-IN')}
+                              ₹{originalPrice.toLocaleString('en-IN')}
                             </span>
                           )}
                         </div>

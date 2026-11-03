@@ -284,11 +284,11 @@ export const AdminTuitionProgramsPage = () => {
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       <div className="font-black text-slate-900">
-                        ₹{(p.price || 0).toLocaleString('en-IN')}
+                        ₹{(p.price ?? p.fee ?? 0).toLocaleString('en-IN')}
                       </div>
-                      {p.originalPrice && p.originalPrice > p.price && (
+                      {p.originalPrice && p.originalPrice > (p.price ?? p.fee ?? 0) && (
                         <div className="text-[10px] text-slate-400 line-through">
-                          ₹{p.originalPrice.toLocaleString('en-IN')}
+                          ₹{p.originalPrice?.toLocaleString('en-IN')}
                         </div>
                       )}
                     </td>

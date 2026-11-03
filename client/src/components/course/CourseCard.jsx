@@ -93,9 +93,9 @@ export const CourseCard = ({ course }) => {
             <div>
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Tuition Fee</span>
               <div className="flex items-baseline gap-2">
-                <span className="text-xl font-black text-[#0B1E3D]">₹{course.fee?.toLocaleString('en-IN')}</span>
-                {course.originalPrice && course.originalPrice > course.fee && (
-                  <span className="text-xs text-slate-400 line-through">₹{course.originalPrice.toLocaleString('en-IN')}</span>
+                <span className="text-xl font-black text-[#0B1E3D]">₹{(course.fee ?? course.price ?? 0).toLocaleString('en-IN')}</span>
+                {course.originalPrice && course.originalPrice > (course.fee ?? course.price ?? 0) && (
+                  <span className="text-xs text-slate-400 line-through">₹{course.originalPrice?.toLocaleString('en-IN')}</span>
                 )}
               </div>
             </div>

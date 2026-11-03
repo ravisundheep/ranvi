@@ -273,7 +273,7 @@ export const MyEnrollmentsPage = () => {
                     {selectedReceipt.discountAmount > 0 && (
                       <tr>
                         <td className="p-2.5 text-emerald-600">Institutional Scholarship Discount</td>
-                        <td className="p-2.5 text-right text-emerald-600 font-medium">-₹{selectedReceipt.discountAmount.toLocaleString('en-IN')}</td>
+                        <td className="p-2.5 text-right text-emerald-600 font-medium">-₹{(selectedReceipt.discountAmount || 0).toLocaleString('en-IN')}</td>
                       </tr>
                     )}
                     <tr className="bg-slate-50/80 font-black text-slate-900">

@@ -243,7 +243,7 @@ export const TuitionEnrollmentPage = () => {
               <div className="p-3 bg-slate-50 rounded-xl space-y-1">
                 <span className="text-slate-400 font-medium">Fee Paid</span>
                 <p className="font-black text-emerald-600 text-sm">
-                  ₹{completedEnrollment.finalAmount?.toLocaleString('en-IN') || program.price?.toLocaleString('en-IN')}
+                  ₹{(completedEnrollment?.finalAmount ?? program.fee ?? program.price ?? 0).toLocaleString('en-IN')}
                 </p>
                 <p className="text-[11px] text-emerald-700 font-semibold">Payment Status: PAID</p>
               </div>
@@ -274,8 +274,8 @@ export const TuitionEnrollmentPage = () => {
   }
 
   // 4. Enrollment Checkout Form
-  const originalPrice = program.originalPrice || program.price;
-  const currentPrice = program.price || 0;
+  const currentPrice = program.fee ?? program.price ?? 0;
+  const originalPrice = program.originalPrice ?? program.fee ?? program.price ?? currentPrice;
   const discountAmount = originalPrice > currentPrice ? originalPrice - currentPrice : 0;
 
   return (
