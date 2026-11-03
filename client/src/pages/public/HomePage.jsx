@@ -299,8 +299,6 @@ export const HomePage = () => {
   const [coursesLoading, setCoursesLoading] = useState(() => getInitialCachedCourses('Andhra Pradesh').length === 0);
   const [searchQuery, setSearchQuery] = useState('');
   const [latestUpdates, setLatestUpdates] = useState([]);
-  const [updatesModalOpen, setUpdatesModalOpen] = useState(false);
-  const [selectedUpdate, setSelectedUpdate] = useState(null);
 
   // Expanded "View All" state per coaching card
   const [expandedSection, setExpandedSection] = useState({
@@ -309,6 +307,16 @@ export const HomePage = () => {
     bankers: false,
     tuitions: false,
   });
+
+  // Dynamic infinite ticker string
+  const tickerString = useMemo(() => {
+    if (latestUpdates && latestUpdates.length > 0) {
+      return latestUpdates
+        .map((u) => `${u.title}${u.badgeText ? ` [${u.badgeText}]` : ''}`)
+        .join('    ✦    ');
+    }
+    return 'New Batches for JAIIB, CAIIB, IBPS PO & SBI PO starting this week!   ✦   Admissions Open 2026: Live Zoom Classes with Senior Ex-Bankers   ✦   10–20 Real Pattern Online Mock Tests   ✦   Class 10, Intermediate & Degree Tuitions Admissions Now Open';
+  }, [latestUpdates]);
 
   // Fetch dynamic latest updates
   useEffect(() => {
@@ -546,35 +554,22 @@ export const HomePage = () => {
           </form>
         </div>
 
-        {/* Ticker / Marquee Banner with Dynamic Updates & View All */}
-        <div className="flex items-center gap-2 bg-slate-100/90 border border-slate-200/80 rounded-xl px-3 py-1.5 overflow-hidden text-xs">
-          <button
-            type="button"
-            onClick={() => setUpdatesModalOpen(true)}
-            className="bg-[#0B2545] hover:bg-[#1E293B] text-white text-[9.5px] font-black px-2 py-0.5 rounded uppercase tracking-wider shrink-0 flex items-center gap-1.5 transition-colors cursor-pointer"
-            title="Click to view all latest updates"
-          >
+        {/* Infinite Right-to-Left Ticker Banner (Admin Managed, Continuous Scroll) */}
+        <div className="flex items-center gap-2.5 bg-slate-100/90 border border-slate-200/80 rounded-xl px-3 py-1.5 overflow-hidden text-xs shadow-2xs">
+          <div className="bg-[#0B2545] text-white text-[9.5px] font-black px-2.5 py-0.5 rounded uppercase tracking-wider shrink-0 flex items-center gap-1.5 shadow-xs select-none">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Latest Updates
-          </button>
-          <div
-            onClick={() => setUpdatesModalOpen(true)}
-            className="overflow-hidden whitespace-nowrap text-slate-700 font-medium text-[11px] sm:text-xs flex-1 cursor-pointer"
-            title="Click to view all latest updates"
-          >
-            <span className="inline-block animate-marquee pl-4">
-              {latestUpdates.length > 0
-                ? latestUpdates.map((u) => `${u.title}${u.badgeText ? ` [${u.badgeText}]` : ''}`).join('  •  ')
-                : 'New Batches for JAIIB, CAIIB, IBPS PO & SBI PO starting this week! • Admissions Open 2026 • Live Zoom Classes with Senior Ex-Bankers • 10–20 Real Pattern Online Mock Tests'}
-            </span>
           </div>
-          <button
-            type="button"
-            onClick={() => setUpdatesModalOpen(true)}
-            className="text-[11px] font-bold text-[#1769D2] hover:text-[#0B2545] hover:underline shrink-0 px-1 py-0.5 cursor-pointer whitespace-nowrap"
-          >
-            View All ({latestUpdates.length || 4})
-          </button>
+          <div className="overflow-hidden whitespace-nowrap text-slate-800 font-semibold text-[11px] sm:text-xs flex-1 relative select-none">
+            <div className="animate-marquee-infinite py-0.5">
+              <span className="pr-12">
+                {tickerString}
+              </span>
+              <span className="pr-12" aria-hidden="true">
+                {tickerString}
+              </span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -998,102 +993,6 @@ export const HomePage = () => {
         <span>Chat with us</span>
       </a>
 
-      {/* ========================================================
-          LATEST UPDATES MODAL (DYNAMIC REAL-TIME POPUP)
-      ======================================================== */}
-      {updatesModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fadeIn">
-          <div className="bg-white rounded-2xl w-full max-w-2xl max-h-[85vh] flex flex-col shadow-2xl border border-slate-200 overflow-hidden">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/60">
-              <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-[#0B2545] text-white flex items-center justify-center">
-                  <Bell className="w-4 h-4 text-[#F4B942]" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-[#0B2545]">
-                    Latest Institutional Updates
-                  </h3>
-                  <p className="text-[11px] text-slate-500 font-medium">
-                    Official announcements, admission alerts & upcoming schedules
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setUpdatesModalOpen(false);
-                  setSelectedUpdate(null);
-                }}
-                className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
-                aria-label="Close updates dialog"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Modal Body: Updates List */}
-            <div className="p-5 overflow-y-auto space-y-3.5 divide-y divide-slate-100">
-              {latestUpdates.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 text-xs">
-                  No published updates at this moment. Please check back later.
-                </div>
-              ) : (
-                latestUpdates.map((update) => (
-                  <div key={update._id} className="pt-3.5 first:pt-0 space-y-1.5">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
-                        {update.badgeText || 'Update'}
-                      </span>
-                      <span className="text-[11px] text-slate-400">
-                        {update.publishedAt ? new Date(update.publishedAt).toLocaleDateString('en-IN', {
-                          day: 'numeric',
-                          month: 'short',
-                          year: 'numeric'
-                        }) : ''}
-                      </span>
-                    </div>
-                    <h4 className="text-sm font-bold text-slate-900 leading-snug">
-                      {update.title}
-                    </h4>
-                    {update.description && (
-                      <p className="text-xs text-slate-600 leading-relaxed whitespace-pre-line">
-                        {update.description}
-                      </p>
-                    )}
-                    {update.link && (
-                      <div className="pt-1">
-                        <a
-                          href={update.link}
-                          target={update.link.startsWith('http') ? '_blank' : '_self'}
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1 text-xs font-bold text-[#1769D2] hover:underline"
-                        >
-                          Learn More / Apply Now <ChevronRight className="w-3.5 h-3.5" />
-                        </a>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
-            </div>
-
-            {/* Modal Footer */}
-            <div className="px-5 py-3 border-t border-slate-100 bg-slate-50 flex items-center justify-between text-xs">
-              <span className="text-slate-500">
-                Total {latestUpdates.length} active updates
-              </span>
-              <button
-                type="button"
-                onClick={() => setUpdatesModalOpen(false)}
-                className="px-4 py-1.5 rounded-lg bg-[#0B2545] text-white font-bold hover:bg-[#1E293B] transition-colors cursor-pointer"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

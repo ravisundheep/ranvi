@@ -143,3 +143,24 @@
   border: 1px solid rgba(244, 185, 66, 0.4);
   box-shadow: 0 0 15px rgba(244, 185, 66, 0.15);
 }
+
+/* Infinite Right-to-Left Ticker Marquee */
+@keyframes marquee-rtl {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(-50%, 0, 0);
+  }
+}
+
+.animate-marquee-infinite {
+  display: inline-flex;
+  white-space: nowrap;
+  animation: marquee-rtl 30s linear infinite;
+  will-change: transform;
+}
+
+.animate-marquee-infinite:hover {
+  animation-play-state: paused;
+}

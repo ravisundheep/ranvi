@@ -8,7 +8,7 @@ import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 export const ClassicalBuildingGraphic = () => (
   <svg
     viewBox="0 0 160 130"
-    className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 drop-shadow-md select-none"
+    className="w-full h-auto max-h-[85px] sm:max-h-[115px] md:max-h-[130px] shrink-0 drop-shadow-md select-none"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
@@ -43,7 +43,7 @@ export const ClassicalBuildingGraphic = () => (
 export const BankersBuildingGraphic = () => (
   <svg
     viewBox="0 0 160 130"
-    className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 drop-shadow-md select-none"
+    className="w-full h-auto max-h-[85px] sm:max-h-[115px] md:max-h-[130px] shrink-0 drop-shadow-md select-none"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
@@ -80,7 +80,7 @@ export const BankersBuildingGraphic = () => (
 export const EntranceBookCapGraphic = () => (
   <svg
     viewBox="0 0 160 130"
-    className="w-24 h-24 sm:w-32 sm:h-32 shrink-0 drop-shadow-md select-none"
+    className="w-full h-auto max-h-[85px] sm:max-h-[115px] md:max-h-[130px] shrink-0 drop-shadow-md select-none"
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
@@ -169,6 +169,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
   const touchStartXRef = useRef(0);
   const touchDeltaXRef = useRef(0);
   const autoPlayTimerRef = useRef(null);
+  const sliderTrackRef = useRef(null);
 
   // Real index (0, 1, or 2) for indicator dots
   const realIndex =
@@ -180,15 +181,15 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
 
   // Handle advancing next
   const handleNext = useCallback(() => {
-    if (!isTransitionEnabled) return;
+    setIsTransitionEnabled(true);
     setExtendedIndex((prev) => prev + 1);
-  }, [isTransitionEnabled]);
+  }, []);
 
   // Handle going prev
   const handlePrev = useCallback(() => {
-    if (!isTransitionEnabled) return;
+    setIsTransitionEnabled(true);
     setExtendedIndex((prev) => prev - 1);
-  }, [isTransitionEnabled]);
+  }, []);
 
   // Jump to specific slide from dots
   const handleDotClick = (targetRealIdx) => {
@@ -196,16 +197,35 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
     setExtendedIndex(targetRealIdx + 1);
   };
 
-  // Seamless boundary wrap when transition finishes
+  // Seamless boundary wrap when transition finishes with DOM reflow guard
   const handleTransitionEnd = () => {
+    const track = sliderTrackRef.current;
     if (extendedIndex === extendedSlides.length - 1) {
       // Reached the clone of Slide 0 -> instantly snap to real Slide 0 (index 1)
+      if (track) {
+        track.style.transition = 'none';
+        track.style.transform = 'translateX(-100%)';
+        void track.offsetHeight; // Force reflow
+      }
       setIsTransitionEnabled(false);
       setExtendedIndex(1);
+      setTimeout(() => {
+        if (track) track.style.transition = '';
+        setIsTransitionEnabled(true);
+      }, 40);
     } else if (extendedIndex === 0) {
       // Reached the clone of Slide 2 -> instantly snap to real Slide 2 (index count)
+      if (track) {
+        track.style.transition = 'none';
+        track.style.transform = `translateX(-${count * 100}%)`;
+        void track.offsetHeight; // Force reflow
+      }
       setIsTransitionEnabled(false);
       setExtendedIndex(count);
+      setTimeout(() => {
+        if (track) track.style.transition = '';
+        setIsTransitionEnabled(true);
+      }, 40);
     }
   };
 
@@ -272,6 +292,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
       <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-lg border border-slate-200/40 bg-slate-900 group">
         {/* Infinite Sliding Reel */}
         <div
+          ref={sliderTrackRef}
           className={`flex ${
             isTransitionEnabled
               ? 'transition-transform duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]'
@@ -290,7 +311,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
             >
               <Link
                 to={slide.link}
-                className={`block rounded-2xl sm:rounded-3xl p-5 sm:p-7 text-white bg-gradient-to-r ${slide.gradient} relative overflow-hidden flex items-center justify-between gap-4 cursor-pointer focus:outline-hidden`}
+                className={`block rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 text-white bg-gradient-to-r ${slide.gradient} relative overflow-hidden flex items-center justify-between gap-3 sm:gap-4 cursor-pointer focus:outline-hidden min-h-[125px] sm:min-h-[145px] md:min-h-[160px]`}
               >
                 {/* Ambient glow in corner */}
                 <div
@@ -298,17 +319,17 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
                 />
 
                 {/* Left Slide Details */}
-                <div className="space-y-2 relative z-10 max-w-xl">
+                <div className="space-y-1.5 sm:space-y-2 relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
                   <div
-                    className={`inline-block ${slide.tagBg} backdrop-blur-xs text-[10px] sm:text-xs font-black px-2.5 py-0.5 rounded uppercase tracking-wider shadow-xs`}
+                    className={`inline-block ${slide.tagBg} backdrop-blur-xs text-[9px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded uppercase tracking-wider shadow-xs`}
                   >
                     {slide.tag}
                   </div>
-                  <h1 className="text-2xl sm:text-4xl font-black font-serif text-white tracking-tight leading-tight">
+                  <h1 className="text-xl sm:text-3xl md:text-4xl font-black font-serif text-white tracking-tight leading-tight">
                     {slide.title}
                   </h1>
                   <p
-                    className={`text-xs sm:text-sm font-bold ${slide.subColor} flex flex-wrap items-center gap-1.5 pt-0.5`}
+                    className={`text-[10.5px] sm:text-xs md:text-sm font-bold ${slide.subColor} flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5`}
                   >
                     {slide.subtitle.split('•').map((item, itemIdx, arr) => (
                       <React.Fragment key={itemIdx}>
@@ -319,8 +340,8 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
                   </p>
                 </div>
 
-                {/* Right Vector Graphic matching reference */}
-                <div className="relative z-10 shrink-0 hidden xs:block transition-transform duration-300 group-hover:scale-105">
+                {/* Right Vector Graphic - ALWAYS visible on all screen sizes */}
+                <div className="relative z-10 shrink-0 flex items-center justify-center w-20 sm:w-28 md:w-36 transition-transform duration-300 group-hover:scale-105">
                   {slide.graphic}
                 </div>
               </Link>
