@@ -6,6 +6,7 @@ import { RanviLogo } from '../common/RanviLogo';
 import {
   LayoutDashboard,
   BookOpen,
+  GraduationCap,
   Video,
   FileCheck2,
   Receipt,
