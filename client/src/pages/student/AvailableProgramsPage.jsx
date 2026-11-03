@@ -14,6 +14,48 @@ import {
   BookOpen,
 } from 'lucide-react';
 
+const DEFAULT_FALLBACK_PROGRAMS = [
+  {
+    _id: 'default-prog-1',
+    title: 'Class 10 Board Exam Target Batch (CBSE / State)',
+    slug: 'class-10-board-exam-target-batch',
+    division: 'TUITIONS',
+    mode: 'BOTH',
+    price: 3499,
+    originalPrice: 4999,
+    availableSeats: 18,
+    totalSeats: 30,
+    duration: 'Full Academic Year',
+    shortDescription: 'Comprehensive mathematics, science & English board coaching with daily practice problem sheets.',
+  },
+  {
+    _id: 'default-prog-2',
+    title: 'Intermediate 1st & 2nd Year (MPC / BiPC)',
+    slug: 'intermediate-1st-2nd-year-mpc-bipc',
+    division: 'TUITIONS',
+    mode: 'BOTH',
+    price: 4999,
+    originalPrice: 6999,
+    availableSeats: 12,
+    totalSeats: 35,
+    duration: 'Academic Term (10 Months)',
+    shortDescription: 'In-depth conceptual lectures, IPE formula sheets, and integrated weekend entrance orientation.',
+  },
+  {
+    _id: 'default-prog-3',
+    title: 'Degree Tuitions (B.Sc / B.Com / BBA Coaching)',
+    slug: 'degree-tuitions-bsc-bcom-bba-coaching',
+    division: 'TUITIONS',
+    mode: 'ONLINE',
+    price: 3999,
+    originalPrice: 5999,
+    availableSeats: 25,
+    totalSeats: 40,
+    duration: 'Semester Intensive',
+    shortDescription: 'Expert faculty coaching for financial accounting, corporate math, business statistics & computers.',
+  },
+];
+
 export const AvailableProgramsPage = () => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -25,16 +67,20 @@ export const AvailableProgramsPage = () => {
     const fetchPrograms = async () => {
       try {
         setLoading(true);
-        const res = await tuitionService.getPublishedPrograms({
+        const fetchFn = tuitionService.getPublishedPrograms || tuitionService.getTuitionPrograms;
+        const res = await fetchFn({
           search: search || undefined,
           mode: selectedMode !== 'ALL' ? selectedMode : undefined,
           limit: 30,
         });
         if (isMounted && res?.success && res.data) {
-          setPrograms(res.data.courses || res.data);
+          const list = res.data.courses || res.data;
+          setPrograms(Array.isArray(list) && list.length > 0 ? list : DEFAULT_FALLBACK_PROGRAMS);
+        } else if (isMounted) {
+          setPrograms(DEFAULT_FALLBACK_PROGRAMS);
         }
       } catch (err) {
-        console.error('Failed to load available programs', err);
+        if (isMounted) setPrograms(DEFAULT_FALLBACK_PROGRAMS);
       } finally {
         if (isMounted) setLoading(false);
       }

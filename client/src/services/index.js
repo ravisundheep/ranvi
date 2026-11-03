@@ -467,7 +467,13 @@ export const tuitionService = {
   getTuitionPrograms: async (params = {}) => {
     return cachedGet('/courses', { ...params, division: 'TUITIONS' }, 30000);
   },
+  getPublishedPrograms: async (params = {}) => {
+    return cachedGet('/courses', { ...params, division: 'TUITIONS' }, 30000);
+  },
   getTuitionProgramBySlug: async (slug) => {
+    return api.get(`/courses/${slug}`);
+  },
+  getProgramBySlug: async (slug) => {
     return api.get(`/courses/${slug}`);
   },
   createTuitionProgram: async (data) => {
