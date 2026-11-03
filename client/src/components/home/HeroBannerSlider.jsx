@@ -38,7 +38,7 @@ export const ClassicalBuildingGraphic = () => (
 );
 
 // ========================================================
-// 2. BANKER'S PATH BUILDING GRAPHIC (WITH MORTARBOARD CAP)
+// 2. BANKER'S PATH BUILDING GRAPHIC (WITH MORTARBOARD CAP - EXACT IMAGE 2)
 // ========================================================
 export const BankersBuildingGraphic = () => (
   <svg
@@ -47,35 +47,35 @@ export const BankersBuildingGraphic = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Classical Pediment (Triangle Roof) */}
-    <path d="M80 32 L20 54 L140 54 Z" fill="#FFFFFF" />
+    {/* Golden Graduation Cap (Mortarboard) - The Roof */}
+    <polygon points="80,14 130,30 80,46 30,30" fill="#F4B942" />
+    {/* Cap White Band / Base */}
+    <rect x="56" y="44" width="48" height="6" rx="1" fill="#FFFFFF" />
     {/* Architrave / Entablature */}
-    <rect x="16" y="54" width="128" height="9" rx="2" fill="#FFFFFF" />
-    {/* 4 Classical Columns matching reference */}
-    <rect x="28" y="66" width="14" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="58" y="66" width="14" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="88" y="66" width="14" height="42" rx="2" fill="#FFFFFF" />
-    <rect x="118" y="66" width="14" height="42" rx="2" fill="#FFFFFF" />
+    <rect x="18" y="52" width="124" height="9" rx="1.5" fill="#FFFFFF" />
+    {/* 4 Classical Columns matching Image 2 */}
+    <rect x="28" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
+    <rect x="58" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
+    <rect x="89" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
+    <rect x="119" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
     {/* Steps / Stylobate Base */}
-    <rect x="16" y="110" width="128" height="7" rx="2" fill="#FFFFFF" />
-    <rect x="10" y="118" width="140" height="9" rx="2" fill="#F4B942" />
-    {/* Golden Graduation Cap (Mortarboard) on Roof */}
-    <path d="M58 24 C58 32 102 32 102 24 L102 28 C102 36 58 36 58 28 Z" fill="#FFFFFF" />
-    <polygon points="80,8 122,22 80,36 38,22" fill="#F4B942" />
-    <circle cx="80" cy="22" r="2.5" fill="#FFFFFF" />
+    <rect x="18" y="107" width="124" height="7" rx="1.5" fill="#FFFFFF" />
+    <rect x="12" y="116" width="136" height="9" rx="2" fill="#F4B942" />
+    {/* Mortarboard Center Button & Tassel to Right */}
+    <circle cx="80" cy="30" r="2.5" fill="#FFFFFF" />
     <path
-      d="M82 22 C98 25 116 34 118 46"
+      d="M82 30 C100 32 120 40 122 52"
       stroke="#FFFFFF"
       strokeWidth="2.5"
       strokeLinecap="round"
       fill="none"
     />
-    <circle cx="118" cy="48" r="3.5" fill="#F4B942" />
+    <circle cx="122" cy="54" r="3.5" fill="#F4B942" />
   </svg>
 );
 
 // ========================================================
-// 3. ENTRANCE EXAMS OPEN BOOK & MORTARBOARD GRAPHIC
+// 3. ENTRANCE EXAMS OPEN BOOK & MORTARBOARD GRAPHIC (EXACT IMAGE 3)
 // ========================================================
 export const EntranceBookCapGraphic = () => (
   <svg
@@ -84,28 +84,29 @@ export const EntranceBookCapGraphic = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Open Book / Geometric Wings Base matching reference */}
-    <polygon points="78,76 18,94 18,114 78,98" fill="#FFFFFF" />
-    <polygon points="78,76 18,94 78,86" fill="#EDE9FE" opacity="0.8" />
-    <polygon points="82,76 142,94 142,114 82,98" fill="#DDD6FE" />
-    <polygon points="82,76 142,94 82,86" fill="#C4B5FD" opacity="0.8" />
-    {/* Base Line */}
-    <polygon points="16,116 144,116 80,122" fill="#A78BFA" opacity="0.6" />
-    {/* Cap Skull Pedestal */}
-    <ellipse cx="80" cy="66" rx="30" ry="10" fill="#FFFFFF" />
-    <path d="M50 66 L50 72 C50 82 110 82 110 72 L110 66 Z" fill="#F3E8FF" />
+    {/* Open Book Wings - Geometric 3D Folded Pages matching Image 3 */}
+    {/* Left Folded Page */}
+    <polygon points="78,74 16,92 16,112 78,96" fill="#FFFFFF" />
+    <polygon points="78,74 16,92 78,84" fill="#EDE9FE" opacity="0.9" />
+    {/* Right Folded Page */}
+    <polygon points="82,74 144,92 144,112 82,96" fill="#DDD6FE" />
+    <polygon points="82,74 144,92 82,84" fill="#C4B5FD" opacity="0.9" />
+    {/* Base Shading Line */}
+    <polygon points="14,114 146,114 80,120" fill="#A78BFA" opacity="0.6" />
+    {/* Cap White Band / Skull */}
+    <rect x="52" y="60" width="56" height="8" rx="2" fill="#FFFFFF" />
     {/* Golden Mortarboard Diamond Top */}
-    <polygon points="80,32 134,50 80,68 26,50" fill="#F4B942" />
-    <circle cx="80" cy="50" r="3.5" fill="#FFFFFF" />
+    <polygon points="80,26 132,44 80,62 28,44" fill="#F4B942" />
+    <circle cx="80" cy="44" r="3" fill="#FFFFFF" />
     {/* Golden Tassel dangling to right with bead */}
     <path
-      d="M83 50 C104 55 125 64 128 78"
+      d="M82 44 C104 48 126 56 128 70"
       stroke="#F4B942"
       strokeWidth="2.5"
       strokeLinecap="round"
       fill="none"
     />
-    <circle cx="128" cy="82" r="4" fill="#F59E0B" />
+    <circle cx="128" cy="74" r="4" fill="#F59E0B" />
   </svg>
 );
 

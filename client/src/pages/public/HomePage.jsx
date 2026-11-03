@@ -211,19 +211,19 @@ const ProgramCard = React.memo(({
             <Link
               key={course._id || idx}
               to={`/courses/${slug}`}
-              className="group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl border border-white/10 shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden !text-white"
+              className="course-tile group min-w-0 px-1 py-1.5 sm:px-2 sm:py-2 md:py-2.5 rounded-lg sm:rounded-xl border border-white/10 shadow-2xs hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all flex flex-col items-center justify-center text-center gap-0.5 sm:gap-1 min-h-[58px] sm:min-h-[66px] md:min-h-[72px] overflow-hidden !text-white"
               style={{ backgroundColor: color, color: '#FFFFFF' }}
               title={course.title || course.name}
             >
               <div
-                className="font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] !text-white w-full px-0.5 break-words line-clamp-2 text-center"
-                style={{ color: '#FFFFFF', textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+                className="course-tile-title font-black text-[9.5px] sm:text-xs md:text-sm tracking-tight uppercase leading-[1.1] !text-white w-full px-0.5 break-words line-clamp-2 text-center"
+                style={{ color: '#FFFFFF', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}
               >
                 {shortName}
               </div>
               <div
-                className="text-[7.5px] sm:text-[9px] md:text-[9.5px] !text-white font-medium leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center"
-                style={{ color: '#FFFFFF', opacity: 0.95, textShadow: '0 1px 1px rgba(0,0,0,0.4)' }}
+                className="course-tile-subtitle text-[7.5px] sm:text-[9px] md:text-[9.5px] !text-white font-medium leading-[1.15] w-full px-0.5 break-words line-clamp-2 text-center"
+                style={{ color: '#FFFFFF', opacity: 0.98, textShadow: '0 1px 1px rgba(0,0,0,0.5)' }}
               >
                 {courseSubtitle}
               </div>
