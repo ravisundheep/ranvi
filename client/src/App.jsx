@@ -29,6 +29,10 @@ const EnquiryDemoPage = lazy(() => import('./pages/public/EnquiryDemoPage').then
 const LoginPage = lazy(() => import('./pages/public/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/public/RegisterPage').then((m) => ({ default: m.RegisterPage })));
 const CheckoutPage = lazy(() => import('./pages/public/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
+const NotificationsPage = lazy(() => import('./pages/public/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
+const TuitionProgramsPage = lazy(() => import('./pages/public/TuitionProgramsPage').then((m) => ({ default: m.TuitionProgramsPage })));
+const TuitionProgramDetailsPage = lazy(() => import('./pages/public/TuitionProgramDetailsPage').then((m) => ({ default: m.TuitionProgramDetailsPage })));
+const TuitionEnrollmentPage = lazy(() => import('./pages/public/TuitionEnrollmentPage').then((m) => ({ default: m.TuitionEnrollmentPage })));
 
 const PrivacyPolicyPage = lazy(() => import('./pages/public/PolicyPages').then((m) => ({ default: m.PrivacyPolicyPage })));
 const TermsPage = lazy(() => import('./pages/public/PolicyPages').then((m) => ({ default: m.TermsPage })));
@@ -46,6 +50,9 @@ const ExamTakePage = lazy(() => import('./pages/student/ExamTakePage').then((m) 
 const ExamResultPage = lazy(() => import('./pages/student/ExamResultPage').then((m) => ({ default: m.ExamResultPage })));
 const StudentPaymentsPage = lazy(() => import('./pages/student/StudentPaymentsPage').then((m) => ({ default: m.StudentPaymentsPage })));
 const StudentProfilePage = lazy(() => import('./pages/student/StudentProfilePage').then((m) => ({ default: m.StudentProfilePage })));
+const AvailableProgramsPage = lazy(() => import('./pages/student/AvailableProgramsPage').then((m) => ({ default: m.AvailableProgramsPage })));
+const MyEnrollmentsPage = lazy(() => import('./pages/student/MyEnrollmentsPage').then((m) => ({ default: m.MyEnrollmentsPage })));
+const MyProgramsPage = lazy(() => import('./pages/student/MyProgramsPage').then((m) => ({ default: m.MyProgramsPage })));
 
 // Lazy-loaded Admin Management Pages
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
@@ -62,6 +69,10 @@ const AdminPaymentsPage = lazy(() => import('./pages/admin/AdminPaymentsPage').t
 const AdminEnquiriesPage = lazy(() => import('./pages/admin/AdminEnquiriesPage').then((m) => ({ default: m.AdminEnquiriesPage })));
 const AdminSettingsPage = lazy(() => import('./pages/admin/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
 const AdminAuditLogsPage = lazy(() => import('./pages/admin/AdminAuditLogsPage').then((m) => ({ default: m.AdminAuditLogsPage })));
+const AdminLatestUpdatesPage = lazy(() => import('./pages/admin/AdminLatestUpdatesPage').then((m) => ({ default: m.AdminLatestUpdatesPage })));
+const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })));
+const AdminTuitionProgramsPage = lazy(() => import('./pages/admin/AdminTuitionProgramsPage').then((m) => ({ default: m.AdminTuitionProgramsPage })));
+const AdminEnrollmentsPage = lazy(() => import('./pages/admin/AdminEnrollmentsPage').then((m) => ({ default: m.AdminEnrollmentsPage })));
 
 const RouteLoadingSpinner = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
@@ -114,6 +125,10 @@ export function App() {
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  <Route path="/tuition-programs" element={<TuitionProgramsPage />} />
+                  <Route path="/tuition-programs/:slug" element={<TuitionProgramDetailsPage />} />
+                  <Route path="/tuition-programs/:slug/enroll" element={<TuitionEnrollmentPage />} />
                   <Route path="/privacy-policy" element={<PrivacyPolicyPage />} />
                   <Route path="/terms" element={<TermsPage />} />
                   <Route path="/refund-policy" element={<RefundPolicyPage />} />
@@ -133,6 +148,9 @@ export function App() {
                   <Route index element={<Navigate to="/student/dashboard" replace />} />
                   <Route path="dashboard" element={<StudentDashboardPage />} />
                   <Route path="my-courses" element={<MyCoursesPage />} />
+                  <Route path="available-programs" element={<AvailableProgramsPage />} />
+                  <Route path="enrollments" element={<MyEnrollmentsPage />} />
+                  <Route path="my-programs" element={<MyProgramsPage />} />
                   <Route path="courses/:courseId/player" element={<CoursePlayerPage />} />
                   <Route path="live-classes" element={<LiveClassesSchedulePage />} />
                   <Route path="mock-tests" element={<MyMockTestsPage />} />
@@ -170,6 +188,10 @@ export function App() {
                   <Route path="enquiries" element={<AdminEnquiriesPage />} />
                   <Route path="settings" element={<AdminSettingsPage />} />
                   <Route path="audit-logs" element={<AdminAuditLogsPage />} />
+                  <Route path="updates" element={<AdminLatestUpdatesPage />} />
+                  <Route path="notifications" element={<AdminNotificationsPage />} />
+                  <Route path="tuitions" element={<AdminTuitionProgramsPage />} />
+                  <Route path="enrollments" element={<AdminEnrollmentsPage />} />
                 </Route>
               </Routes>
             </Suspense>

@@ -307,3 +307,110 @@ export const adminService = {
     return api.delete(`/mock-tests/questions/${questionId}`);
   },
 };
+
+export const latestUpdateService = {
+  getPublishedUpdates: async (params = {}) => {
+    return cachedGet('/latest-updates/public', params, 30000);
+  },
+  getUpdateById: async (id) => {
+    return api.get(`/latest-updates/public/${id}`);
+  },
+  getAdminUpdates: async (params = {}) => {
+    return api.get('/latest-updates/admin', { params });
+  },
+  createUpdate: async (data) => {
+    clearClientCache('/latest-updates');
+    return api.post('/latest-updates/admin', data);
+  },
+  updateUpdate: async (id, data) => {
+    clearClientCache('/latest-updates');
+    return api.put(`/latest-updates/admin/${id}`, data);
+  },
+  deleteUpdate: async (id) => {
+    clearClientCache('/latest-updates');
+    return api.delete(`/latest-updates/admin/${id}`);
+  },
+  toggleUpdateStatus: async (id) => {
+    clearClientCache('/latest-updates');
+    return api.patch(`/latest-updates/admin/${id}/toggle-status`);
+  },
+};
+
+export const publicNotificationService = {
+  getPublicNotifications: async (params = {}) => {
+    return cachedGet('/notifications/public', params, 30000);
+  },
+  getPublicNotificationById: async (id) => {
+    return api.get(`/notifications/public/${id}`);
+  },
+  getAdminNotifications: async (params = {}) => {
+    return api.get('/notifications/admin', { params });
+  },
+  createAdminNotification: async (data) => {
+    clearClientCache('/notifications');
+    return api.post('/notifications/admin', data);
+  },
+  updateAdminNotification: async (id, data) => {
+    clearClientCache('/notifications');
+    return api.put(`/notifications/admin/${id}`, data);
+  },
+  deleteAdminNotification: async (id) => {
+    clearClientCache('/notifications');
+    return api.delete(`/notifications/admin/${id}`);
+  },
+  toggleNotificationStatus: async (id) => {
+    clearClientCache('/notifications');
+    return api.patch(`/notifications/admin/${id}/toggle-status`);
+  },
+  toggleNotificationPinned: async (id) => {
+    clearClientCache('/notifications');
+    return api.patch(`/notifications/admin/${id}/toggle-pinned`);
+  },
+};
+
+export const enrollmentService = {
+  createIntent: async (data) => {
+    return api.post('/enrollments/intent', data);
+  },
+  verifyPayment: async (data) => {
+    clearClientCache('/courses');
+    return api.post('/enrollments/verify', data);
+  },
+  getMyEnrollments: async () => {
+    return api.get('/enrollments/my');
+  },
+  getMyEnrollmentById: async (id) => {
+    return api.get(`/enrollments/my/${id}`);
+  },
+  getAdminEnrollments: async (params = {}) => {
+    return api.get('/enrollments/admin', { params });
+  },
+  getAdminStats: async () => {
+    return api.get('/enrollments/admin/stats');
+  },
+  updateAdminStatus: async (id, data) => {
+    return api.put(`/enrollments/admin/${id}/status`, data);
+  },
+};
+
+export const tuitionService = {
+  getTuitionPrograms: async (params = {}) => {
+    return cachedGet('/courses', { ...params, division: 'TUITIONS' }, 30000);
+  },
+  getTuitionProgramBySlug: async (slug) => {
+    return api.get(`/courses/${slug}`);
+  },
+  createTuitionProgram: async (data) => {
+    clearClientCache('/courses');
+    return api.post('/courses', { ...data, division: 'TUITIONS' });
+  },
+  updateTuitionProgram: async (id, data) => {
+    clearClientCache('/courses');
+    return api.put(`/courses/${id}`, data);
+  },
+  deleteTuitionProgram: async (id) => {
+    clearClientCache('/courses');
+    return api.delete(`/courses/${id}?permanent=true`);
+  },
+};
+

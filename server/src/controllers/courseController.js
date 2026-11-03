@@ -85,7 +85,7 @@ const getCourses = async (req, res, next) => {
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const total = await Course.countDocuments(query);
     const courses = await Course.find(query)
-      .select('title slug division categoryId thumbnail fee originalPrice mode duration batchSchedule isPublished isFeatured states tileColor tileShortName tileSubtitle shortDescription displayOrder createdAt')
+      .select('title slug division categoryId thumbnail fee originalPrice mode duration batchSchedule isPublished isFeatured states tileColor tileShortName tileSubtitle shortDescription displayOrder createdAt startDate endDate registrationDeadline totalSeats availableSeats isEnrollmentOpen eligibilityCriteria subject syllabusPdf documents')
       .populate('categoryId', 'name slug icon color division')
       .sort({ displayOrder: 1, isFeatured: -1, createdAt: -1 })
       .skip(skip)
@@ -217,6 +217,16 @@ const createCourse = async (req, res, next) => {
       tileColor,
       displayOrder,
       isPublished,
+      startDate,
+      endDate,
+      registrationDeadline,
+      totalSeats,
+      availableSeats,
+      isEnrollmentOpen,
+      eligibilityCriteria,
+      subject,
+      syllabusPdf,
+      documents,
     } = req.body;
 
     let resolvedCategoryId = categoryId;
@@ -265,6 +275,16 @@ const createCourse = async (req, res, next) => {
       tileSubtitle: tileSubtitle || '',
       tileColor: tileColor || '',
       displayOrder: displayOrder !== undefined ? Number(displayOrder) : 0,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      registrationDeadline: registrationDeadline ? new Date(registrationDeadline) : undefined,
+      totalSeats: totalSeats !== undefined ? Number(totalSeats) : 50,
+      availableSeats: availableSeats !== undefined ? Number(availableSeats) : (totalSeats !== undefined ? Number(totalSeats) : 50),
+      isEnrollmentOpen: isEnrollmentOpen !== undefined ? Boolean(isEnrollmentOpen) : true,
+      eligibilityCriteria: eligibilityCriteria || '',
+      subject: subject || '',
+      syllabusPdf: syllabusPdf || '',
+      documents: Array.isArray(documents) ? documents : [],
     });
 
     invalidateCourseServerCache();

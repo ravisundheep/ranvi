@@ -16,6 +16,8 @@ const adminRoutes = require('./adminRoutes');
 const siteSettingsRoutes = require('./siteSettingsRoutes');
 const notificationRoutes = require('./notificationRoutes');
 const entranceExamRoutes = require('./entranceExamRoutes');
+const latestUpdateRoutes = require('./latestUpdateRoutes');
+const enrollmentRoutes = require('./enrollmentRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/courses', courseRoutes);
@@ -32,6 +34,9 @@ router.use('/admin', adminRoutes);
 router.use('/site-settings', siteSettingsRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/entrance-exams', entranceExamRoutes);
+router.use('/latest-updates', latestUpdateRoutes);
+router.use('/updates', latestUpdateRoutes);
+router.use('/enrollments', enrollmentRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

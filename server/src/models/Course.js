@@ -70,7 +70,7 @@ const CourseSchema = new mongoose.Schema({
   },
   mode: {
     type: String,
-    enum: ['ONLINE', 'OFFLINE', 'BOTH'],
+    enum: ['ONLINE', 'OFFLINE', 'BOTH', 'HYBRID'],
     default: 'BOTH',
   },
   duration: {
@@ -84,6 +84,42 @@ const CourseSchema = new mongoose.Schema({
   startDate: {
     type: Date,
   },
+  endDate: {
+    type: Date,
+  },
+  registrationDeadline: {
+    type: Date,
+  },
+  totalSeats: {
+    type: Number,
+    default: 50,
+  },
+  availableSeats: {
+    type: Number,
+    default: 50,
+  },
+  isEnrollmentOpen: {
+    type: Boolean,
+    default: true,
+  },
+  eligibilityCriteria: {
+    type: String,
+    default: '',
+  },
+  subject: {
+    type: String,
+    default: '',
+  },
+  syllabusPdf: {
+    type: String,
+    default: '',
+  },
+  documents: [
+    {
+      name: { type: String, required: true },
+      url: { type: String, required: true },
+    },
+  ],
   fee: {
     type: Number,
     required: true,

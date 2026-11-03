@@ -31,6 +31,8 @@ export const StudentLayout = () => {
   const navItems = [
     { name: 'Dashboard', path: '/student/dashboard', icon: LayoutDashboard },
     { name: 'My Enrolled Courses', path: '/student/my-courses', icon: BookOpen },
+    { name: 'Available Tuition Programs', path: '/student/available-programs', icon: GraduationCap },
+    { name: 'My Enrollments & Receipts', path: '/student/enrollments', icon: Receipt },
     { name: 'Live Classes (Zoom)', path: '/student/live-classes', icon: Video },
     { name: 'Online Mock Tests', path: '/student/mock-tests', icon: FileCheck2 },
     { name: 'Payment History', path: '/student/payments', icon: Receipt },
