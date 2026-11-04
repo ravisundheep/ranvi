@@ -31,6 +31,7 @@ const startExam = async (req, res, next) => {
         studentId,
         itemId: mockTest.courseId._id,
         isActive: true,
+        status: { $in: ['ACTIVE', 'ENROLLED'] },
         validUntil: { $gte: new Date() },
       });
       if (entitlement) hasAccess = true;

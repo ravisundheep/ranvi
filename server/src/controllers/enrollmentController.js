@@ -46,16 +46,25 @@ const createEnrollmentIntent = async (req, res) => {
       return sendError(res, 'Registration is full for this program. No seats available.', 400);
     }
 
-    // Check duplicate active enrollment
+    // Check duplicate active enrollment or active entitlement
     const existingEnrollment = await Enrollment.findOne({
       studentId,
       courseId,
-      enrollmentStatus: 'ENROLLED',
+      enrollmentStatus: { $in: ['ENROLLED', 'ACTIVE'] },
     });
 
-    if (existingEnrollment) {
-      return sendError(res, 'You are already enrolled in this coaching program', 400, {
-        enrollmentId: existingEnrollment.enrollmentId,
+    const existingEntitlement = await Entitlement.findOne({
+      studentId,
+      itemId: courseId,
+      isActive: true,
+      status: { $in: ['ACTIVE', 'ENROLLED'] },
+      validUntil: { $gte: new Date() },
+    });
+
+    if (existingEnrollment || existingEntitlement) {
+      return sendError(res, 'You already have an active subscription for this program', 400, {
+        enrollmentId: existingEnrollment?.enrollmentId,
+        validUntil: existingEnrollment?.validUntil || existingEntitlement?.validUntil,
       });
     }
 
@@ -292,13 +301,17 @@ const verifyEnrollmentPayment = async (req, res) => {
     }
 
     // Update Enrollment
+    const validityDays = enrollment.courseId?.validityDays || 180;
+    const validUntil = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
+
     enrollment.enrollmentStatus = 'ENROLLED';
     enrollment.paymentStatus = 'PAID';
     enrollment.paymentId = payment._id;
+    enrollment.validFrom = new Date();
+    enrollment.validUntil = validUntil;
     await enrollment.save();
 
-    // Create Entitlement
-    const validUntil = new Date(Date.now() + (enrollment.courseId?.validityDays || 180) * 24 * 60 * 60 * 1000);
+    // Create or update Entitlement atomically
     await Entitlement.findOneAndUpdate(
       { studentId, itemId: enrollment.courseId?._id || enrollment.courseId },
       {
@@ -310,6 +323,7 @@ const verifyEnrollmentPayment = async (req, res) => {
         validFrom: new Date(),
         validUntil,
         isActive: true,
+        status: 'ACTIVE',
         grantedBy: 'PAYMENT',
         grantReason: `Verified Gateway Payment for ${enrollment.courseId?.title || 'Program'}`,
       },
@@ -326,6 +340,7 @@ const verifyEnrollmentPayment = async (req, res) => {
     // Audit log
     await AuditLog.create({
       action: 'ENROLLMENT_VERIFIED',
+      resource: 'Enrollment',
       userId: studentId,
       userEmail: req.user.email,
       userRole: req.user.role,
@@ -471,7 +486,17 @@ const updateAdminEnrollmentStatus = async (req, res) => {
     const { id } = req.params;
     const { enrollmentStatus, notes } = req.body;
 
-    const validStatuses = ['PENDING_PAYMENT', 'PAYMENT_PENDING_VERIFICATION', 'ENROLLED', 'CANCELLED', 'REJECTED'];
+    const validStatuses = [
+      'ACTIVE',
+      'ENROLLED',
+      'PENDING_PAYMENT',
+      'PAYMENT_PENDING_VERIFICATION',
+      'SUSPENDED',
+      'CANCELLED',
+      'REFUNDED',
+      'EXPIRED',
+      'REJECTED',
+    ];
     if (!validStatuses.includes(enrollmentStatus)) {
       return sendError(res, 'Invalid enrollment status', 400);
     }
@@ -484,10 +509,45 @@ const updateAdminEnrollmentStatus = async (req, res) => {
     const oldStatus = enrollment.enrollmentStatus;
     enrollment.enrollmentStatus = enrollmentStatus;
     if (notes !== undefined) enrollment.notes = notes;
+
+    // Synchronize access entitlement with administrative status change
+    if (enrollmentStatus === 'SUSPENDED') {
+      enrollment.suspendedReason = notes || 'Suspended by administration';
+      await Entitlement.updateMany(
+        { studentId: enrollment.studentId, itemId: enrollment.courseId },
+        { isActive: false, status: 'SUSPENDED', suspendedReason: notes || '' }
+      );
+    } else if (enrollmentStatus === 'CANCELLED' || enrollmentStatus === 'REJECTED') {
+      enrollment.cancelledAt = new Date();
+      await Entitlement.updateMany(
+        { studentId: enrollment.studentId, itemId: enrollment.courseId },
+        { isActive: false, status: 'CANCELLED', cancelledAt: new Date() }
+      );
+    } else if (enrollmentStatus === 'REFUNDED') {
+      enrollment.paymentStatus = 'REFUNDED';
+      enrollment.refundedAt = new Date();
+      await Entitlement.updateMany(
+        { studentId: enrollment.studentId, itemId: enrollment.courseId },
+        { isActive: false, status: 'REFUNDED', refundedAt: new Date() }
+      );
+    } else if (enrollmentStatus === 'EXPIRED') {
+      await Entitlement.updateMany(
+        { studentId: enrollment.studentId, itemId: enrollment.courseId },
+        { isActive: false, status: 'EXPIRED' }
+      );
+    } else if (enrollmentStatus === 'ENROLLED' || enrollmentStatus === 'ACTIVE') {
+      enrollment.paymentStatus = 'PAID';
+      await Entitlement.updateMany(
+        { studentId: enrollment.studentId, itemId: enrollment.courseId },
+        { isActive: true, status: 'ACTIVE' }
+      );
+    }
+
     await enrollment.save();
 
     await AuditLog.create({
       action: 'ENROLLMENT_STATUS_UPDATED',
+      resource: 'Enrollment',
       userId: req.user._id,
       userEmail: req.user.email,
       userRole: req.user.role,

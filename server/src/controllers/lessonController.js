@@ -15,14 +15,19 @@ const getCourseLessons = async (req, res, next) => {
 
     let isEnrolled = false;
     if (req.user) {
-      const activeEntitlement = await Entitlement.findOne({
-        studentId: req.user._id,
-        itemId: course._id,
-        isActive: true,
-        validUntil: { $gte: new Date() },
-      });
-      if (activeEntitlement) {
+      if (['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
         isEnrolled = true;
+      } else {
+        const activeEntitlement = await Entitlement.findOne({
+          studentId: req.user._id,
+          itemId: course._id,
+          isActive: true,
+          status: { $in: ['ACTIVE', 'ENROLLED'] },
+          validUntil: { $gte: new Date() },
+        });
+        if (activeEntitlement) {
+          isEnrolled = true;
+        }
       }
     }
 
@@ -81,11 +86,12 @@ const getLessonPlayback = async (req, res, next) => {
         hasAccess = true;
         accessType = 'ADMIN';
       } else {
-        // Check active entitlement
+        // Check active entitlement with status validation
         const entitlement = await Entitlement.findOne({
           studentId: req.user._id,
           itemId: lesson.courseId._id,
           isActive: true,
+          status: { $in: ['ACTIVE', 'ENROLLED'] },
           validUntil: { $gte: new Date() },
         });
 

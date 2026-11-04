@@ -29,6 +29,7 @@ export const TuitionEnrollmentPage = () => {
   const { success, error: toastError } = useToast();
 
   const [program, setProgram] = useState(null);
+  const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
   const [completedEnrollment, setCompletedEnrollment] = useState(null);
@@ -55,9 +56,13 @@ export const TuitionEnrollmentPage = () => {
         setLoading(true);
         const res = await tuitionService.getProgramBySlug(slug);
         if (isMounted && res?.success && res.data) {
-          setProgram(res.data);
-          if (res.data.batchTimings && res.data.batchTimings.length > 0) {
-            setBatchTiming(res.data.batchTimings[0]);
+          const prog = res.data.course || res.data;
+          setProgram(prog);
+          if (res.data.userAccess?.isEnrolled || prog.isEnrolled) {
+            setAlreadyEnrolled(true);
+          }
+          if (prog.batchTimings && prog.batchTimings.length > 0) {
+            setBatchTiming(prog.batchTimings[0]);
           }
         }
       } catch (err) {
@@ -165,6 +170,9 @@ export const TuitionEnrollmentPage = () => {
         }
       }
     } catch (err) {
+      if (err.message && (err.message.includes('already enrolled') || err.message.includes('active subscription'))) {
+        setAlreadyEnrolled(true);
+      }
       toastError(err.message || 'Enrollment checkout failed. Please try again.');
     } finally {
       setProcessing(false);
@@ -267,6 +275,41 @@ export const TuitionEnrollmentPage = () => {
                 <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 3.5. Prevent Duplicate Purchases
+  if (alreadyEnrolled) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 sm:px-6">
+        <div className="max-w-xl mx-auto bg-white rounded-3xl p-8 border border-emerald-200 shadow-sm text-center space-y-4">
+          <div className="w-16 h-16 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl sm:text-2xl font-black text-[#0B2545]">
+            Active Subscription Confirmed
+          </h2>
+          <p className="text-xs sm:text-sm text-slate-600 leading-relaxed">
+            You already have an active subscription for <strong>{program?.title || 'this program'}</strong>.
+            Your seat is reserved and all learning resources are unlocked in your Student Portal.
+          </p>
+          <div className="pt-3 flex flex-col sm:flex-row gap-2.5 justify-center">
+            <Link
+              to="/student/my-courses"
+              className="bg-[#0B2545] hover:bg-[#1E293B] text-white text-xs font-bold px-5 py-3 rounded-xl transition-all shadow-xs inline-flex items-center justify-center gap-1.5"
+            >
+              <span>View My Program & Classes</span>
+              <ChevronRight className="w-4 h-4" />
+            </Link>
+            <Link
+              to="/student/enrollments"
+              className="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-5 py-3 rounded-xl transition-colors inline-flex items-center justify-center"
+            >
+              Payment History & Receipts
+            </Link>
           </div>
         </div>
       </div>

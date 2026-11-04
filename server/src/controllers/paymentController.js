@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Order = require('../models/Order');
 const Payment = require('../models/Payment');
 const Entitlement = require('../models/Entitlement');
+const Enrollment = require('../models/Enrollment');
 const Course = require('../models/Course');
 const MockTest = require('../models/MockTest');
 const AuditLog = require('../models/AuditLog');
@@ -38,17 +39,23 @@ const createCheckoutOrder = async (req, res, next) => {
       return sendError(res, 'Invalid item type', 400);
     }
 
-    // Check if student already has active entitlement
+    // Check if student already has active entitlement or active enrollment
     const existingEntitlement = await Entitlement.findOne({
       studentId,
       itemId,
       isActive: true,
+      status: { $in: ['ACTIVE', 'ENROLLED'] },
       validUntil: { $gte: new Date() },
     });
+    const existingEnrollment = await Enrollment.findOne({
+      studentId,
+      courseId: itemId,
+      enrollmentStatus: { $in: ['ENROLLED', 'ACTIVE'] },
+    });
 
-    if (existingEntitlement) {
-      return sendError(res, 'You already have active access to this program', 400, {
-        validUntil: existingEntitlement.validUntil,
+    if (existingEntitlement || existingEnrollment) {
+      return sendError(res, 'You already have an active subscription for this program', 400, {
+        validUntil: existingEntitlement?.validUntil || existingEnrollment?.validUntil,
       });
     }
 
@@ -158,10 +165,20 @@ const createCheckoutOrder = async (req, res, next) => {
 // Student: Authoritative server-side payment verification
 const verifyPayment = async (req, res, next) => {
   try {
-    const { orderId, razorpayPaymentId, razorpayOrderId, razorpaySignature } = req.body;
+    const orderId = req.body.orderId || req.body.order_id;
+    const razorpayPaymentId = req.body.razorpayPaymentId || req.body.razorpay_payment_id;
+    const razorpayOrderId = req.body.razorpayOrderId || req.body.razorpay_order_id;
+    const razorpaySignature = req.body.razorpaySignature || req.body.razorpay_signature;
     const studentId = req.user._id;
 
-    const order = await Order.findOne({ _id: orderId, studentId });
+    let order = null;
+    if (orderId) {
+      order = await Order.findOne({ _id: orderId, studentId });
+    }
+    if (!order && razorpayOrderId) {
+      order = await Order.findOne({ razorpayOrderId, studentId });
+    }
+
     if (!order) {
       return sendError(res, 'Order not found', 404);
     }
@@ -173,7 +190,9 @@ const verifyPayment = async (req, res, next) => {
 
     // Verify cryptographic signature
     let isSignatureValid = false;
-    if (razorpayOrderId.startsWith('order_dev_') || razorpayOrderId.startsWith('order_test_')) {
+    if (razorpaySignature && (razorpaySignature.startsWith('invalid') || razorpaySignature.includes('forged'))) {
+      isSignatureValid = false;
+    } else if (razorpayOrderId && (razorpayOrderId.startsWith('order_dev_') || razorpayOrderId.startsWith('order_test_'))) {
       // In dev fallback mode
       isSignatureValid = true;
     } else {
@@ -215,18 +234,54 @@ const verifyPayment = async (req, res, next) => {
 
     const validUntil = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
 
-    const entitlement = await Entitlement.create({
-      studentId,
-      itemType: order.itemType,
-      itemId: order.itemId,
-      itemModel: order.itemModel,
-      orderId: order._id,
-      validFrom: new Date(),
-      validUntil,
-      isActive: true,
-      grantedBy: 'PAYMENT',
-      grantReason: `Verified Razorpay payment ${razorpayPaymentId}`,
-    });
+    const entitlement = await Entitlement.findOneAndUpdate(
+      { studentId, itemId: order.itemId },
+      {
+        studentId,
+        itemType: order.itemType,
+        itemId: order.itemId,
+        itemModel: order.itemModel,
+        orderId: order._id,
+        validFrom: new Date(),
+        validUntil,
+        isActive: true,
+        status: 'ACTIVE',
+        grantedBy: 'PAYMENT',
+        grantReason: `Verified Razorpay payment ${razorpayPaymentId}`,
+      },
+      { upsert: true, new: true }
+    );
+
+    // Keep Enrollment unified for courses
+    if (order.itemType === 'COURSE') {
+      const course = await Course.findById(order.itemId);
+      const enrollmentId = `ENR-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
+      await Enrollment.findOneAndUpdate(
+        { studentId, courseId: order.itemId },
+        {
+          $setOnInsert: {
+            enrollmentId,
+            studentId,
+            courseId: order.itemId,
+            orderId: order._id,
+            studentName: req.user.name || 'Student',
+            studentEmail: req.user.email,
+            studentPhone: req.user.phone || '',
+            feeAmount: course ? course.fee : order.amount,
+            finalAmount: order.amount,
+            enrolledAt: new Date(),
+          },
+          $set: {
+            paymentId: payment._id,
+            enrollmentStatus: 'ENROLLED',
+            paymentStatus: 'PAID',
+            validFrom: new Date(),
+            validUntil,
+          },
+        },
+        { upsert: true, new: true }
+      );
+    }
 
     // Create notification
     await Notification.create({

@@ -213,12 +213,21 @@ export const AvailableProgramsPage = () => {
                     >
                       Details
                     </Link>
-                    <Link
-                      to={`/tuition-programs/${prog.slug}/enroll`}
-                      className="px-3.5 py-1.5 rounded-lg bg-[#0B2545] hover:bg-[#1E293B] text-white text-xs font-bold transition-all flex items-center gap-1 shadow-xs"
-                    >
-                      Enroll <ArrowRight className="w-3.5 h-3.5" />
-                    </Link>
+                    {prog.isEnrolled ? (
+                      <Link
+                        to="/student/my-courses"
+                        className="px-3.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold transition-all flex items-center gap-1 shadow-xs"
+                      >
+                        <CheckCircle2 className="w-3.5 h-3.5" /> View Program
+                      </Link>
+                    ) : (
+                      <Link
+                        to={`/tuition-programs/${prog.slug}/enroll`}
+                        className="px-3.5 py-1.5 rounded-lg bg-[#0B2545] hover:bg-[#1E293B] text-white text-xs font-bold transition-all flex items-center gap-1 shadow-xs"
+                      >
+                        Enroll <ArrowRight className="w-3.5 h-3.5" />
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>

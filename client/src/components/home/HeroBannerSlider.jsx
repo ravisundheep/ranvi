@@ -38,7 +38,7 @@ export const ClassicalBuildingGraphic = () => (
 );
 
 // ========================================================
-// 2. BANKER'S PATH BUILDING GRAPHIC (WITH MORTARBOARD CAP - EXACT IMAGE 2)
+// 2. BANKER'S PATH BUILDING GRAPHIC (EXACT IMAGE 1 MATCH)
 // ========================================================
 export const BankersBuildingGraphic = () => (
   <svg
@@ -47,35 +47,33 @@ export const BankersBuildingGraphic = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Golden Graduation Cap (Mortarboard) - The Roof */}
-    <polygon points="80,14 130,30 80,46 30,30" fill="#F4B942" />
-    {/* Cap White Band / Base */}
-    <rect x="56" y="44" width="48" height="6" rx="1" fill="#FFFFFF" />
-    {/* Architrave / Entablature */}
-    <rect x="18" y="52" width="124" height="9" rx="1.5" fill="#FFFFFF" />
-    {/* 4 Classical Columns matching Image 2 */}
-    <rect x="28" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
-    <rect x="58" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
-    <rect x="89" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
-    <rect x="119" y="63" width="13" height="42" rx="1.5" fill="#FFFFFF" />
-    {/* Steps / Stylobate Base */}
-    <rect x="18" y="107" width="124" height="7" rx="1.5" fill="#FFFFFF" />
-    <rect x="12" y="116" width="136" height="9" rx="2" fill="#F4B942" />
-    {/* Mortarboard Center Button & Tassel to Right */}
-    <circle cx="80" cy="30" r="2.5" fill="#FFFFFF" />
-    <path
-      d="M82 30 C100 32 120 40 122 52"
-      stroke="#FFFFFF"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <circle cx="122" cy="54" r="3.5" fill="#F4B942" />
+    {/* White Triangular Pediment Roof (Slopes down on both sides) */}
+    <polygon points="80,18 16,52 144,52" fill="#FFFFFF" />
+
+    {/* Architrave / Entablature (Horizontal white bar under pediment) */}
+    <rect x="14" y="52" width="132" height="9" rx="1.5" fill="#FFFFFF" />
+
+    {/* Golden Graduation Cap (Mortarboard) - Sits on top of the pediment */}
+    <polygon points="80,22 126,37 80,52 34,37" fill="#F4B942" />
+
+    {/* White Tassel String hanging from right tip of mortarboard */}
+    <line x1="126" y1="37" x2="126" y2="52" stroke="#FFFFFF" strokeWidth="2" strokeLinecap="round" />
+    {/* Golden Bead at bottom of tassel */}
+    <circle cx="126" cy="54" r="3.5" fill="#F4B942" />
+
+    {/* 4 Classical White Columns */}
+    <rect x="25" y="64" width="13" height="40" rx="1.5" fill="#FFFFFF" />
+    <rect x="57" y="64" width="13" height="40" rx="1.5" fill="#FFFFFF" />
+    <rect x="89" y="64" width="13" height="40" rx="1.5" fill="#FFFFFF" />
+    <rect x="121" y="64" width="13" height="40" rx="1.5" fill="#FFFFFF" />
+
+    {/* Golden Base Bar (Stylobate) */}
+    <rect x="12" y="106" width="136" height="9" rx="2" fill="#F4B942" />
   </svg>
 );
 
 // ========================================================
-// 3. ENTRANCE EXAMS OPEN BOOK & MORTARBOARD GRAPHIC (EXACT IMAGE 3)
+// 3. ENTRANCE EXAMS OPEN BOOK & MORTARBOARD GRAPHIC (EXACT IMAGE 2 MATCH)
 // ========================================================
 export const EntranceBookCapGraphic = () => (
   <svg
@@ -84,29 +82,28 @@ export const EntranceBookCapGraphic = () => (
     fill="none"
     xmlns="http://www.w3.org/2000/svg"
   >
-    {/* Open Book Wings - Geometric 3D Folded Pages matching Image 3 */}
-    {/* Left Folded Page */}
-    <polygon points="78,74 16,92 16,112 78,96" fill="#FFFFFF" />
-    <polygon points="78,74 16,92 78,84" fill="#EDE9FE" opacity="0.9" />
-    {/* Right Folded Page */}
-    <polygon points="82,74 144,92 144,112 82,96" fill="#DDD6FE" />
-    <polygon points="82,74 144,92 82,84" fill="#C4B5FD" opacity="0.9" />
-    {/* Base Shading Line */}
-    <polygon points="14,114 146,114 80,120" fill="#A78BFA" opacity="0.6" />
-    {/* Cap White Band / Skull */}
-    <rect x="52" y="60" width="56" height="8" rx="2" fill="#FFFFFF" />
     {/* Golden Mortarboard Diamond Top */}
-    <polygon points="80,26 132,44 80,62 28,44" fill="#F4B942" />
-    <circle cx="80" cy="44" r="3" fill="#FFFFFF" />
-    {/* Golden Tassel dangling to right with bead */}
-    <path
-      d="M82 44 C104 48 126 56 128 70"
-      stroke="#F4B942"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      fill="none"
-    />
-    <circle cx="128" cy="74" r="4" fill="#F59E0B" />
+    <polygon points="80,18 134,36 80,54 26,36" fill="#F4B942" />
+
+    {/* White Cap Underside / Skull Band */}
+    <path d="M50,47 C50,60 110,60 110,47 Z" fill="#FFFFFF" />
+
+    {/* Center Button on Mortarboard */}
+    <circle cx="80" cy="36" r="2.5" fill="#FFFFFF" />
+
+    {/* Golden Tassel hanging from right tip down to a golden bead */}
+    <line x1="134" y1="36" x2="134" y2="54" stroke="#F4B942" strokeWidth="2.5" strokeLinecap="round" />
+    <circle cx="134" cy="58" r="4" fill="#F59E0B" />
+
+    {/* Open 3D Book underneath: Left & Right Folded Pages */}
+    {/* Left Wing */}
+    <polygon points="80,68 18,84 18,104 80,88" fill="#FFFFFF" />
+    <polygon points="80,68 18,84 80,76" fill="#F5F3FF" />
+    {/* Right Wing */}
+    <polygon points="80,68 142,84 142,104 80,88" fill="#EDE9FE" />
+    <polygon points="80,68 142,84 80,76" fill="#DDD6FE" />
+    {/* Spine Line */}
+    <line x1="80" y1="68" x2="80" y2="104" stroke="#7C3AED" strokeWidth="2" strokeLinecap="round" />
   </svg>
 );
 
@@ -120,10 +117,8 @@ export const BANNER_SLIDES = [
     tag: 'Competitive Exams',
     title: 'Your Government Job Journey',
     subtitle: 'IBPS • SBI • RBI • SSC • RRB • LIC',
-    gradient: 'from-[#009E60] via-[#059669] to-[#10B981]',
-    glowColor: 'bg-emerald-300/20',
-    tagBg: 'bg-white/20 text-white',
-    subColor: 'text-emerald-100',
+    gradient: 'from-[#008A52] via-[#009E60] to-[#047857]',
+    glowColor: 'bg-emerald-300/25',
     link: '/competitive-exams',
     graphic: <ClassicalBuildingGraphic />,
   },
@@ -133,10 +128,8 @@ export const BANNER_SLIDES = [
     tag: "Banker's Path",
     title: 'Grow Your Banking Career',
     subtitle: 'JAIIB • CAIIB • DBF • DTM • NISM',
-    gradient: 'from-[#0052CC] via-[#0D62D9] to-[#1E70EB]',
-    glowColor: 'bg-blue-300/20',
-    tagBg: 'bg-white/20 text-white',
-    subColor: 'text-blue-100',
+    gradient: 'from-[#1258C2] via-[#1665D8] to-[#1769D2]',
+    glowColor: 'bg-blue-300/25',
     link: '/bankers-path',
     graphic: <BankersBuildingGraphic />,
   },
@@ -146,10 +139,8 @@ export const BANNER_SLIDES = [
     tag: 'Entrance Exams',
     title: 'Unlock Your Dream College',
     subtitle: 'JEE • NEET • CUET • EAPCET • CLAT • NDA',
-    gradient: 'from-[#581C87] via-[#7C3AED] to-[#9333EA]',
-    glowColor: 'bg-purple-300/20',
-    tagBg: 'bg-white/20 text-white',
-    subColor: 'text-purple-100',
+    gradient: 'from-[#6D28D9] via-[#7C3AED] to-[#8B5CF6]',
+    glowColor: 'bg-purple-300/25',
     link: '/entrance-exams',
     graphic: <EntranceBookCapGraphic />,
   },
@@ -314,28 +305,32 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
                 to={slide.link}
                 className={`block rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 text-white bg-gradient-to-r ${slide.gradient} relative overflow-hidden flex items-center justify-between gap-3 sm:gap-4 cursor-pointer focus:outline-hidden min-h-[125px] sm:min-h-[145px] md:min-h-[160px]`}
               >
-                {/* Ambient glow in corner */}
+                {/* Ambient glow in bottom-right corner */}
                 <div
                   className={`absolute -right-10 -bottom-10 w-52 h-52 ${slide.glowColor} rounded-full blur-3xl pointer-events-none`}
                 />
+                {/* Subtle top-right radial arc highlight matching reference */}
+                <div
+                  className="absolute right-0 top-0 w-36 h-36 bg-white/10 rounded-full blur-xl pointer-events-none"
+                />
 
                 {/* Left Slide Details */}
-                <div className="space-y-1.5 sm:space-y-2 relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
+                <div className="space-y-1 sm:space-y-1.5 relative z-10 flex-1 min-w-0 pr-1 sm:pr-2">
                   <div
-                    className={`inline-block ${slide.tagBg} backdrop-blur-xs text-[9px] sm:text-xs font-black px-2 sm:px-2.5 py-0.5 rounded uppercase tracking-wider shadow-xs`}
+                    className="text-[10px] sm:text-xs md:text-sm font-black text-white/95 uppercase tracking-wider drop-shadow-xs"
                   >
                     {slide.tag}
                   </div>
-                  <h1 className="text-xl sm:text-3xl md:text-4xl font-black font-serif text-white tracking-tight leading-tight">
+                  <h1 className="text-xl sm:text-2xl md:text-3xl font-black font-serif text-white tracking-tight leading-tight drop-shadow-sm">
                     {slide.title}
                   </h1>
                   <p
-                    className={`text-[10.5px] sm:text-xs md:text-sm font-bold ${slide.subColor} flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5`}
+                    className="text-[11px] sm:text-xs md:text-sm font-bold text-white flex flex-wrap items-center gap-1 sm:gap-1.5 pt-0.5 drop-shadow-xs"
                   >
                     {slide.subtitle.split('•').map((item, itemIdx, arr) => (
                       <React.Fragment key={itemIdx}>
                         <span>{item.trim()}</span>
-                        {itemIdx < arr.length - 1 && <span>•</span>}
+                        {itemIdx < arr.length - 1 && <span className="opacity-80">•</span>}
                       </React.Fragment>
                     ))}
                   </p>

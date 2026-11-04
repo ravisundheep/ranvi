@@ -15,6 +15,7 @@ const Enquiry = require('../src/models/Enquiry');
 const EntranceExam = require('../src/models/EntranceExam');
 const SiteSettings = require('../src/models/SiteSettings');
 const AuditLog = require('../src/models/AuditLog');
+const Enrollment = require('../src/models/Enrollment');
 const { isValidZoomUrl } = require('../src/utils/zoomValidator');
 const { verifySignature } = require('../src/config/razorpay');
 const {
@@ -24,6 +25,13 @@ const {
 } = require('../src/utils/auditCleanupService');
 const { getAuditLogs, triggerAuditLogCleanup, getDashboardStats } = require('../src/controllers/adminController');
 const { getStudentDashboard } = require('../src/controllers/studentController');
+const {
+  createEnrollmentIntent,
+  verifyEnrollmentPayment,
+  getMyEnrollmentById,
+  updateAdminEnrollmentStatus,
+} = require('../src/controllers/enrollmentController');
+const { createCheckoutOrder, verifyPayment } = require('../src/controllers/paymentController');
 const { authorize } = require('../src/middleware/authorize');
 const {
   broadcastCourseUpdate,
@@ -689,6 +697,334 @@ const runTests = async () => {
     } catch (socketErr) {
       assert(false, `Socket.IO event dispatcher threw error: ${socketErr.message}`);
     }
+
+    // ========================================================
+    // 17. Phase 14: Subscription Lifecycle, Duplicate Purchase Prevention, Payment Verification, IDOR Isolation & Admin State Synchronization
+    // ========================================================
+    console.log('\n--- Testing Phase 14: Subscription Management & Payment Security ---');
+
+    // Setup Test Users & Course
+    const testCourse = await Course.findOne({ isPublished: true });
+    assert(testCourse !== null, 'A published course exists for subscription testing');
+
+    // Create Test Student A
+    const userA = await User.create({
+      name: 'User Alpha',
+      email: `user.alpha.${Date.now()}@ranvi.com`,
+      passwordHash: '$2a$10$abcdefghijklmnopqrstuvwxyz123456',
+      phone: '9848111222',
+      role: 'STUDENT',
+      isActive: true,
+    });
+
+    // Create Test Student B
+    const userB = await User.create({
+      name: 'User Beta',
+      email: `user.beta.${Date.now()}@ranvi.com`,
+      passwordHash: '$2a$10$abcdefghijklmnopqrstuvwxyz123456',
+      phone: '9848333444',
+      role: 'STUDENT',
+      isActive: true,
+    });
+
+    // SCENARIO 1: First-time purchase & entitlement grant
+    let checkoutResPayload = null;
+    let checkoutStatus = 200;
+    const mockCheckoutReq = {
+      user: userA,
+      body: {
+        itemType: 'COURSE',
+        itemId: testCourse._id.toString(),
+      },
+    };
+    const mockCheckoutRes = {
+      status: (code) => {
+        checkoutStatus = code;
+        return mockCheckoutRes;
+      },
+      json: (data) => {
+        checkoutResPayload = data;
+        return mockCheckoutRes;
+      },
+    };
+
+    await createCheckoutOrder(mockCheckoutReq, mockCheckoutRes, (err) => { throw err; });
+    assert((checkoutStatus === 200 || checkoutStatus === 201) && checkoutResPayload?.success === true, 'Scenario 1: Student A first-time checkout order created');
+    const orderA = await Order.findById(checkoutResPayload.data.orderId);
+    assert(orderA !== null && orderA.amount === testCourse.fee, 'Scenario 1: Order amount strictly matches course fee from DB');
+
+    // Simulate payment completion for User A
+    const entitlementA = await Entitlement.create({
+      studentId: userA._id,
+      itemType: 'COURSE',
+      itemId: testCourse._id,
+      itemModel: 'Course',
+      orderId: orderA._id,
+      status: 'ACTIVE',
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      isActive: true,
+      grantedBy: 'PAYMENT',
+    });
+    orderA.status = 'PAID';
+    await orderA.save();
+
+    const enrollmentA = await Enrollment.create({
+      enrollmentId: `ENR-TEST-${Date.now()}`,
+      studentId: userA._id,
+      courseId: testCourse._id,
+      studentName: userA.name,
+      studentEmail: userA.email,
+      studentPhone: userA.phone,
+      feeAmount: testCourse.fee,
+      finalAmount: testCourse.fee,
+      paymentStatus: 'PAID',
+      enrollmentStatus: 'ENROLLED',
+      validFrom: new Date(),
+      validUntil: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000),
+      orderId: orderA._id,
+    });
+    assert(entitlementA.status === 'ACTIVE' && enrollmentA.enrollmentStatus === 'ENROLLED', 'Scenario 1: Entitlement ACTIVE and Enrollment ENROLLED granted upon payment');
+
+    // SCENARIO 2: Duplicate purchase rejection (Backend HTTP 400 & DB Guard)
+    let duplicateStatus = null;
+    let duplicatePayload = null;
+    const mockDuplicateReq = {
+      user: userA,
+      body: {
+        itemType: 'COURSE',
+        itemId: testCourse._id.toString(),
+      },
+    };
+    const mockDuplicateRes = {
+      status: (code) => {
+        duplicateStatus = code;
+        return mockDuplicateRes;
+      },
+      json: (data) => {
+        duplicatePayload = data;
+        return mockDuplicateRes;
+      },
+    };
+
+    await createCheckoutOrder(mockDuplicateReq, mockDuplicateRes, (err) => { throw err; });
+    assert(duplicateStatus === 400, 'Scenario 2: Duplicate purchase attempt rejected with HTTP 400');
+    assert(
+      duplicatePayload?.message?.includes('already have an active subscription'),
+      'Scenario 2: Returns clear error message: "You already have an active subscription for this program"'
+    );
+
+    // SCENARIO 3: Different user purchase allowed for same course
+    let userBCheckoutStatus = null;
+    let userBCheckoutPayload = null;
+    const mockUserBCheckoutReq = {
+      user: userB,
+      body: {
+        itemType: 'COURSE',
+        itemId: testCourse._id.toString(),
+      },
+    };
+    const mockUserBCheckoutRes = {
+      status: (code) => {
+        userBCheckoutStatus = code;
+        return mockUserBCheckoutRes;
+      },
+      json: (data) => {
+        userBCheckoutPayload = data;
+        return mockUserBCheckoutRes;
+      },
+    };
+
+    await createCheckoutOrder(mockUserBCheckoutReq, mockUserBCheckoutRes, (err) => { throw err; });
+    assert((userBCheckoutStatus === 200 || userBCheckoutStatus === 201) && userBCheckoutPayload?.success === true, 'Scenario 3: Different user (User B) is allowed to purchase the same course');
+
+    // SCENARIO 4: Unauthorized Access & IDOR Prevention
+    let idorStatus = null;
+    let idorPayload = null;
+    const mockIdorReq = {
+      user: userB,
+      params: { id: enrollmentA._id.toString() },
+    };
+    const mockIdorRes = {
+      status: (code) => {
+        idorStatus = code;
+        return mockIdorRes;
+      },
+      json: (data) => {
+        idorPayload = data;
+        return mockIdorRes;
+      },
+    };
+
+    await getMyEnrollmentById(mockIdorReq, mockIdorRes, (err) => { throw err; });
+    assert(
+      idorStatus === 403 || idorStatus === 404,
+      'Scenario 4: IDOR Prevention - User B cannot view User A private enrollment details (HTTP 403/404)'
+    );
+
+    // SCENARIO 5: Payment failure handling (Signature mismatch)
+    let failVerifyStatus = null;
+    let failVerifyPayload = null;
+    const mockFailVerifyReq = {
+      user: userB,
+      body: {
+        razorpay_order_id: userBCheckoutPayload.data.razorpayOrderId,
+        razorpay_payment_id: 'pay_tampered_001',
+        razorpay_signature: 'invalid_forged_signature_hex',
+      },
+    };
+    const mockFailVerifyRes = {
+      status: (code) => {
+        failVerifyStatus = code;
+        return mockFailVerifyRes;
+      },
+      json: (data) => {
+        failVerifyPayload = data;
+        return mockFailVerifyRes;
+      },
+    };
+
+    await verifyPayment(mockFailVerifyReq, mockFailVerifyRes, (err) => { throw err; });
+    assert(failVerifyStatus === 400, 'Scenario 5: Payment verification with forged signature fails with HTTP 400');
+    const userBEntitlement = await Entitlement.findOne({ studentId: userB._id, itemId: testCourse._id });
+    assert(userBEntitlement === null, 'Scenario 5: Zero entitlement granted when signature verification fails');
+
+    // SCENARIO 6: Duplicate Webhook Idempotency
+    const orderToDoubleVerify = await Order.create({
+      studentId: userB._id,
+      itemType: 'COURSE',
+      itemId: testCourse._id,
+      itemModel: 'Course',
+      amount: testCourse.fee,
+      currency: 'INR',
+      razorpayOrderId: 'order_webhook_idem_001',
+      status: 'PAID', // Already processed
+      receiptNumber: 'REC-IDEM-001',
+    });
+    let idemStatus = null;
+    let idemPayload = null;
+    const mockIdemReq = {
+      user: userB,
+      body: {
+        razorpay_order_id: 'order_webhook_idem_001',
+        razorpay_payment_id: 'pay_idem_001',
+        razorpay_signature: 'dummy_sig',
+      },
+    };
+    const mockIdemRes = {
+      status: (code) => {
+        idemStatus = code;
+        return mockIdemRes;
+      },
+      json: (data) => {
+        idemPayload = data;
+        return mockIdemRes;
+      },
+    };
+
+    await verifyPayment(mockIdemReq, mockIdemRes, (err) => { throw err; });
+    assert(idemStatus === 200 && idemPayload?.message?.includes('already verified'), 'Scenario 6: Second payment verification handles idempotency cleanly (already verified)');
+
+    // SCENARIO 7: Subscription expiry
+    const expiredEntitlement = await Entitlement.create({
+      studentId: userA._id,
+      itemType: 'COURSE',
+      itemId: new mongoose.Types.ObjectId(),
+      itemModel: 'Course',
+      status: 'EXPIRED',
+      validFrom: new Date(Date.now() - 400 * 24 * 60 * 60 * 1000),
+      validUntil: new Date(Date.now() - 35 * 24 * 60 * 60 * 1000), // Expired 35 days ago
+      isActive: false,
+    });
+    const activeCheck = await Entitlement.findOne({
+      studentId: userA._id,
+      itemId: expiredEntitlement.itemId,
+      isActive: true,
+      status: { $in: ['ACTIVE', 'ENROLLED'] },
+      validUntil: { $gte: new Date() },
+    });
+    assert(activeCheck === null, 'Scenario 7: Expired subscription strictly blocks active access queries');
+
+    // SCENARIO 8: Suspension & Revocation Synchronization
+    let suspendStatus = null;
+    let suspendPayload = null;
+    const mockAdminSuspendReq = {
+      user: { _id: new mongoose.Types.ObjectId(), email: 'admin@ranviinstitutions.com', role: 'ADMIN' },
+      params: { id: enrollmentA._id.toString() },
+      body: {
+        enrollmentStatus: 'SUSPENDED',
+        suspendedReason: 'Account policy review',
+      },
+    };
+    const mockAdminSuspendRes = {
+      status: (code) => {
+        suspendStatus = code;
+        return mockAdminSuspendRes;
+      },
+      json: (data) => {
+        suspendPayload = data;
+        return mockAdminSuspendRes;
+      },
+    };
+
+    await updateAdminEnrollmentStatus(mockAdminSuspendReq, mockAdminSuspendRes, (err) => { throw err; });
+    assert(suspendStatus === 200, 'Scenario 8: Admin suspends enrollment successfully');
+    const syncedEntitlement = await Entitlement.findOne({ studentId: userA._id, itemId: testCourse._id });
+    assert(
+      syncedEntitlement.isActive === false && syncedEntitlement.status === 'SUSPENDED',
+      'Scenario 8: Suspension syncs immediately - Entitlement deactivated (isActive: false, status: SUSPENDED)'
+    );
+
+    // Reactivation back to ENROLLED
+    mockAdminSuspendReq.body = { enrollmentStatus: 'ENROLLED' };
+    await updateAdminEnrollmentStatus(mockAdminSuspendReq, mockAdminSuspendRes, (err) => { throw err; });
+    const reactivatedEntitlement = await Entitlement.findOne({ studentId: userA._id, itemId: testCourse._id });
+    assert(
+      reactivatedEntitlement.isActive === true && reactivatedEntitlement.status === 'ACTIVE',
+      'Scenario 8: Reactivation syncs immediately - Entitlement restored to ACTIVE'
+    );
+
+    // SCENARIO 9: Admin management audit trail
+    const auditRecord = await AuditLog.findOne({
+      action: 'ENROLLMENT_STATUS_UPDATED',
+      details: { $regex: enrollmentA.enrollmentId },
+    });
+    assert(auditRecord !== null, 'Scenario 9: Admin enrollment status change is captured in AuditLog');
+
+    // SCENARIO 10: Security & Tamper Prevention
+    let tamperedStatus = null;
+    let tamperedPayload = null;
+    const mockTamperedReq = {
+      user: userB,
+      body: {
+        itemType: 'COURSE',
+        itemId: testCourse._id.toString(),
+        amount: 1, // Tampered client price (1 Rupee instead of full fee)
+      },
+    };
+    const mockTamperedRes = {
+      status: (code) => {
+        tamperedStatus = code;
+        return mockTamperedRes;
+      },
+      json: (data) => {
+        tamperedPayload = data;
+        return mockTamperedRes;
+      },
+    };
+
+    await createCheckoutOrder(mockTamperedReq, mockTamperedRes, (err) => { throw err; });
+    const orderCreated = await Order.findById(tamperedPayload?.data?.orderId);
+    assert(
+      orderCreated.amount === testCourse.fee && orderCreated.amount !== 1,
+      'Scenario 10: Client-side price tampering rejected - order created strictly with DB price'
+    );
+
+    // Clean up temporary test users
+    await User.deleteMany({ _id: { $in: [userA._id, userB._id] } });
+    await Order.deleteMany({ studentId: { $in: [userA._id, userB._id] } });
+    await Entitlement.deleteMany({ studentId: { $in: [userA._id, userB._id] } });
+    await Enrollment.deleteMany({ studentId: { $in: [userA._id, userB._id] } });
 
     console.log('\n🧪 =======================================================');
     console.log(`🧪 TEST RESULTS: ${passedCount} PASSED, ${failedCount} FAILED`);

@@ -18,6 +18,7 @@ const getStudentDashboard = async (req, res, next) => {
       studentId,
       itemType: 'COURSE',
       isActive: true,
+      status: { $in: ['ACTIVE', 'ENROLLED'] },
       validUntil: { $gte: new Date() },
     }).populate({
       path: 'itemId',

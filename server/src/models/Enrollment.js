@@ -84,13 +84,42 @@ const EnrollmentSchema = new mongoose.Schema(
     },
     enrollmentStatus: {
       type: String,
-      enum: ['PENDING_PAYMENT', 'PAYMENT_PENDING_VERIFICATION', 'ENROLLED', 'CANCELLED', 'REJECTED'],
+      enum: [
+        'ACTIVE',
+        'ENROLLED',
+        'PENDING_PAYMENT',
+        'PAYMENT_PENDING_VERIFICATION',
+        'EXPIRED',
+        'CANCELLED',
+        'SUSPENDED',
+        'FAILED',
+        'REFUNDED',
+        'REJECTED',
+      ],
       default: 'PENDING_PAYMENT',
     },
     paymentStatus: {
       type: String,
       enum: ['PENDING', 'PAID', 'FAILED', 'REFUNDED'],
       default: 'PENDING',
+    },
+    validFrom: {
+      type: Date,
+      default: Date.now,
+    },
+    validUntil: {
+      type: Date,
+    },
+    suspendedReason: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    cancelledAt: {
+      type: Date,
+    },
+    refundedAt: {
+      type: Date,
     },
     enrolledAt: {
       type: Date,
@@ -108,6 +137,7 @@ const EnrollmentSchema = new mongoose.Schema(
 
 EnrollmentSchema.index({ studentId: 1, courseId: 1 });
 EnrollmentSchema.index({ enrollmentStatus: 1, paymentStatus: 1 });
+EnrollmentSchema.index({ studentId: 1, enrollmentStatus: 1 });
 EnrollmentSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('Enrollment', EnrollmentSchema);

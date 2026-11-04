@@ -180,9 +180,12 @@ export const AdminEnrollmentsPage = () => {
           >
             <option value="ALL">All Enrollment Status</option>
             <option value="ENROLLED">Enrolled (Active)</option>
-            <option value="PENDING_VERIFICATION">Pending Verification</option>
-            <option value="COMPLETED">Completed</option>
+            <option value="SUSPENDED">Suspended (Access Paused)</option>
+            <option value="PENDING_PAYMENT">Pending Payment</option>
+            <option value="PAYMENT_PENDING_VERIFICATION">Pending Verification</option>
+            <option value="EXPIRED">Expired</option>
             <option value="CANCELLED">Cancelled</option>
+            <option value="REFUNDED">Refunded</option>
           </select>
 
           <select
@@ -352,9 +355,12 @@ export const AdminEnrollmentsPage = () => {
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 font-semibold focus:outline-none focus:border-[#1769D2]"
                 >
                   <option value="ENROLLED">ENROLLED (Confirmed & Active)</option>
-                  <option value="PENDING_VERIFICATION">PENDING VERIFICATION</option>
-                  <option value="COMPLETED">COMPLETED (Term Finished)</option>
+                  <option value="SUSPENDED">SUSPENDED (Temporarily Suspend Access)</option>
                   <option value="CANCELLED">CANCELLED (Revoke Admission)</option>
+                  <option value="REFUNDED">REFUNDED (Payment Refunded & Access Revoked)</option>
+                  <option value="EXPIRED">EXPIRED (Subscription Term Finished)</option>
+                  <option value="PAYMENT_PENDING_VERIFICATION">PAYMENT PENDING VERIFICATION</option>
+                  <option value="PENDING_PAYMENT">PENDING PAYMENT</option>
                 </select>
               </div>
 

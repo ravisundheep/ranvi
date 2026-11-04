@@ -300,13 +300,23 @@ export const TuitionProgramsPage = () => {
                         >
                           Details
                         </Link>
-                        <Link
-                          to={`/tuition-programs/${program.slug}/enroll`}
-                          className="bg-[#009E60] hover:bg-[#007044] text-white text-xs font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1 shadow-xs transition-colors"
-                        >
-                          <span>Enroll</span>
-                          <ArrowRight className="w-3.5 h-3.5" />
-                        </Link>
+                        {program.isEnrolled ? (
+                          <Link
+                            to="/student/my-courses"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1 shadow-xs transition-colors"
+                          >
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>View Program</span>
+                          </Link>
+                        ) : (
+                          <Link
+                            to={`/tuition-programs/${program.slug}/enroll`}
+                            className="bg-[#009E60] hover:bg-[#007044] text-white text-xs font-bold px-3.5 py-2 rounded-xl inline-flex items-center gap-1 shadow-xs transition-colors"
+                          >
+                            <span>Enroll</span>
+                            <ArrowRight className="w-3.5 h-3.5" />
+                          </Link>
+                        )}
                       </div>
                     </div>
                   </div>

@@ -23,6 +23,7 @@ export const TuitionProgramDetailsPage = () => {
   const { slug } = useParams();
   const navigate = useNavigate();
   const [program, setProgram] = useState(null);
+  const [userAccess, setUserAccess] = useState({ isEnrolled: false });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [activeAccordion, setActiveAccordion] = useState(0);
@@ -34,7 +35,9 @@ export const TuitionProgramDetailsPage = () => {
         setError(null);
         const res = await tuitionService.getTuitionProgramBySlug(slug);
         if (res && res.success && res.data) {
-          setProgram(res.data);
+          const progData = res.data.course || res.data;
+          setProgram(progData);
+          setUserAccess(res.data.userAccess || { isEnrolled: Boolean(progData.isEnrolled) });
         } else {
           setError('Coaching program not found or no longer active.');
         }
@@ -362,7 +365,21 @@ export const TuitionProgramDetailsPage = () => {
               </div>
 
               {/* Action Button */}
-              {isClosed ? (
+              {userAccess?.isEnrolled || program?.isEnrolled ? (
+                <div className="space-y-2.5 p-4 rounded-2xl bg-emerald-50 border border-emerald-200">
+                  <div className="flex items-center gap-2 text-emerald-800 font-bold text-xs">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                    <span>You already have an active subscription for this program.</span>
+                  </div>
+                  <Link
+                    to="/student/my-courses"
+                    className="w-full bg-[#0B2545] hover:bg-[#1E293B] text-white font-black text-xs py-3 px-4 rounded-xl flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                  >
+                    <span>View My Program</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              ) : isClosed ? (
                 <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-center space-y-1">
                   <p className="text-xs font-bold text-red-700">Enrollment Closed</p>
                   <p className="text-[11px] text-red-500">Admissions for this batch are currently closed.</p>

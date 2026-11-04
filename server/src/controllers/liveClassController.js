@@ -16,6 +16,7 @@ const getStudentLiveClasses = async (req, res, next) => {
       studentId,
       itemType: 'COURSE',
       isActive: true,
+      status: { $in: ['ACTIVE', 'ENROLLED'] },
       validUntil: { $gte: new Date() },
     });
 

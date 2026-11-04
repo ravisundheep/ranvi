@@ -1,6 +1,7 @@
 const Course = require('../models/Course');
 const Category = require('../models/Category');
 const Entitlement = require('../models/Entitlement');
+const Enrollment = require('../models/Enrollment');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { broadcastCourseUpdate } = require('../utils/socketService');
 
@@ -92,6 +93,34 @@ const getCourses = async (req, res, next) => {
       .limit(parseInt(limit, 10))
       .lean();
 
+    // Annotate user-specific enrollment status if authenticated
+    if (req.user && courses.length > 0) {
+      const courseIds = courses.map((c) => c._id);
+      const [activeEntitlements, activeEnrollments] = await Promise.all([
+        Entitlement.find({
+          studentId: req.user._id,
+          itemId: { $in: courseIds },
+          isActive: true,
+          status: { $in: ['ACTIVE', 'ENROLLED'] },
+          validUntil: { $gte: new Date() },
+        }).select('itemId').lean(),
+        Enrollment.find({
+          studentId: req.user._id,
+          courseId: { $in: courseIds },
+          enrollmentStatus: { $in: ['ENROLLED', 'ACTIVE'] },
+        }).select('courseId').lean(),
+      ]);
+
+      const enrolledIds = new Set([
+        ...activeEntitlements.map((e) => e.itemId.toString()),
+        ...activeEnrollments.map((e) => e.courseId.toString()),
+      ]);
+
+      courses.forEach((c) => {
+        c.isEnrolled = enrolledIds.has(c._id.toString());
+      });
+    }
+
     const responsePayload = {
       courses,
       pagination: {
@@ -102,7 +131,7 @@ const getCourses = async (req, res, next) => {
       },
     };
 
-    if (includeUnpublished !== 'true' && !search) {
+    if (includeUnpublished !== 'true' && !search && !req.user) {
       courseListCache.set(cacheKey, { data: responsePayload, timestamp: Date.now() });
     }
 
@@ -135,16 +164,27 @@ const getCourseBySlug = async (req, res, next) => {
     let entitlement = null;
 
     if (req.user) {
-      const activeEntitlement = await Entitlement.findOne({
-        studentId: req.user._id,
-        itemId: course._id,
-        isActive: true,
-        validUntil: { $gte: new Date() },
-      });
-
-      if (activeEntitlement) {
+      if (['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
         isEnrolled = true;
-        entitlement = activeEntitlement;
+      } else {
+        const activeEntitlement = await Entitlement.findOne({
+          studentId: req.user._id,
+          itemId: course._id,
+          isActive: true,
+          status: { $in: ['ACTIVE', 'ENROLLED'] },
+          validUntil: { $gte: new Date() },
+        });
+
+        const activeEnrollment = await Enrollment.findOne({
+          studentId: req.user._id,
+          courseId: course._id,
+          enrollmentStatus: { $in: ['ENROLLED', 'ACTIVE'] },
+        });
+
+        if (activeEntitlement || activeEnrollment) {
+          isEnrolled = true;
+          entitlement = activeEntitlement;
+        }
       }
     }
 

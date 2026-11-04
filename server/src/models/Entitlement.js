@@ -37,6 +37,22 @@ const EntitlementSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  status: {
+    type: String,
+    enum: ['ACTIVE', 'PENDING', 'EXPIRED', 'CANCELLED', 'SUSPENDED', 'FAILED', 'REFUNDED'],
+    default: 'ACTIVE',
+  },
+  suspendedReason: {
+    type: String,
+    default: '',
+    trim: true,
+  },
+  cancelledAt: {
+    type: Date,
+  },
+  refundedAt: {
+    type: Date,
+  },
   grantedBy: {
     type: String,
     enum: ['PAYMENT', 'ADMIN_MANUAL', 'PROMOTION'],
@@ -50,7 +66,8 @@ const EntitlementSchema = new mongoose.Schema({
   timestamps: true,
 });
 
-EntitlementSchema.index({ studentId: 1, itemId: 1, isActive: 1 });
+EntitlementSchema.index({ studentId: 1, itemId: 1, isActive: 1, status: 1 });
 EntitlementSchema.index({ validUntil: 1 });
+EntitlementSchema.index({ status: 1 });
 
 module.exports = mongoose.model('Entitlement', EntitlementSchema);
