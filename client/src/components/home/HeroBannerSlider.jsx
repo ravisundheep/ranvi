@@ -163,25 +163,37 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
   const autoPlayTimerRef = useRef(null);
   const sliderTrackRef = useRef(null);
 
-  // Real index (0, 1, or 2) for indicator dots
-  const realIndex =
-    extendedIndex === 0
-      ? count - 1
-      : extendedIndex === count + 1
-      ? 0
-      : extendedIndex - 1;
+  // Real index (0, 1, or 2) for indicator dots - mathematically safe modulo
+  const realIndex = ((extendedIndex - 1) % count + count) % count;
 
-  // Handle advancing next
+  // Clamped safe index for transform to guarantee track never scrolls into void
+  const safeIndex = Math.min(Math.max(extendedIndex, 0), extendedSlides.length - 1);
+
+  // Handle advancing next with strict boundary guard
   const handleNext = useCallback(() => {
-    setIsTransitionEnabled(true);
-    setExtendedIndex((prev) => prev + 1);
-  }, []);
+    setExtendedIndex((prev) => {
+      // If already at or beyond the end clone, snap to slide 1 first, then advance
+      if (prev >= count + 1) {
+        setIsTransitionEnabled(false);
+        return 2;
+      }
+      setIsTransitionEnabled(true);
+      return prev + 1;
+    });
+  }, [count]);
 
-  // Handle going prev
+  // Handle going prev with strict boundary guard
   const handlePrev = useCallback(() => {
-    setIsTransitionEnabled(true);
-    setExtendedIndex((prev) => prev - 1);
-  }, []);
+    setExtendedIndex((prev) => {
+      // If already at or below the start clone, snap to slide count, then go backwards
+      if (prev <= 0) {
+        setIsTransitionEnabled(false);
+        return count - 1;
+      }
+      setIsTransitionEnabled(true);
+      return prev - 1;
+    });
+  }, [count]);
 
   // Jump to specific slide from dots
   const handleDotClick = (targetRealIdx) => {
@@ -189,49 +201,63 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
     setExtendedIndex(targetRealIdx + 1);
   };
 
-  // Seamless boundary wrap when transition finishes with DOM reflow guard
-  const handleTransitionEnd = () => {
-    const track = sliderTrackRef.current;
-    if (extendedIndex === extendedSlides.length - 1) {
-      // Reached the clone of Slide 0 -> instantly snap to real Slide 0 (index 1)
-      if (track) {
-        track.style.transition = 'none';
-        track.style.transform = 'translateX(-100%)';
-        void track.offsetHeight; // Force reflow
-      }
+  // Seamless boundary wrap when transition finishes on the track itself
+  const handleTransitionEnd = (e) => {
+    // Crucial: Only respond to transitions on the track itself, not bubbled events from children
+    if (e && e.target !== sliderTrackRef.current) return;
+
+    if (extendedIndex >= count + 1) {
+      // Reached the clone of Slide 0 -> instantly snap to real Slide 0 (index 1) without animation
       setIsTransitionEnabled(false);
       setExtendedIndex(1);
-      setTimeout(() => {
-        if (track) track.style.transition = '';
-        setIsTransitionEnabled(true);
-      }, 40);
-    } else if (extendedIndex === 0) {
-      // Reached the clone of Slide 2 -> instantly snap to real Slide 2 (index count)
-      if (track) {
-        track.style.transition = 'none';
-        track.style.transform = `translateX(-${count * 100}%)`;
-        void track.offsetHeight; // Force reflow
-      }
+    } else if (extendedIndex <= 0) {
+      // Reached the clone of Slide 2 -> instantly snap to real Slide 2 (index count) without animation
       setIsTransitionEnabled(false);
       setExtendedIndex(count);
-      setTimeout(() => {
-        if (track) track.style.transition = '';
-        setIsTransitionEnabled(true);
-      }, 40);
     }
   };
 
-  // Re-enable transition smoothly after an instant snap
+  // Re-enable transition smoothly after an instant snap using double-rAF
   useEffect(() => {
     if (!isTransitionEnabled) {
-      const raf = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setIsTransitionEnabled(true);
+      let isMounted = true;
+      const raf1 = requestAnimationFrame(() => {
+        const raf2 = requestAnimationFrame(() => {
+          if (isMounted) {
+            setIsTransitionEnabled(true);
+          }
         });
+        return () => cancelAnimationFrame(raf2);
       });
-      return () => cancelAnimationFrame(raf);
+      return () => {
+        isMounted = false;
+        cancelAnimationFrame(raf1);
+      };
     }
   }, [isTransitionEnabled]);
+
+  // Page Visibility API: Stop autoplay when tab is inactive/hidden,
+  // and resume & validate index when user returns to tab
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        setIsPaused(true);
+      } else {
+        // When user returns to tab, ensure index is not desynced
+        setExtendedIndex((curr) => {
+          if (curr < 1 || curr > count) {
+            setIsTransitionEnabled(false);
+            return 1;
+          }
+          return curr;
+        });
+        setIsPaused(false);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [count]);
 
   // Auto-play infinite scroll timer
   useEffect(() => {
@@ -291,7 +317,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
               : ''
           }`}
           style={{
-            transform: `translateX(-${extendedIndex * 100}%)`,
+            transform: `translateX(-${safeIndex * 100}%)`,
             willChange: 'transform',
           }}
           onTransitionEnd={handleTransitionEnd}
