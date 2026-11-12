@@ -35,16 +35,18 @@ export const TuitionProgramsPage = () => {
   const [page, setPage] = useState(1);
   const [pagination, setPagination] = useState({ total: 0, pages: 1 });
 
-  const fetchPrograms = async () => {
+  const fetchPrograms = async (overrideSearch, overridePage) => {
     try {
       setLoading(true);
       setError(null);
+      const q = overrideSearch !== undefined ? overrideSearch : searchQuery;
+      const p = overridePage !== undefined ? overridePage : page;
       const params = {
-        page,
+        page: p,
         limit: 12,
         division: 'TUITIONS',
       };
-      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (q && q.trim()) params.search = q.trim();
       if (activeMode !== 'ALL') params.mode = activeMode;
 
       const res = await tuitionService.getTuitionPrograms(params);
@@ -76,13 +78,13 @@ export const TuitionProgramsPage = () => {
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     setPage(1);
-    fetchPrograms();
+    fetchPrograms(searchQuery, 1);
   };
 
   const handleClearSearch = () => {
     setSearchQuery('');
     setPage(1);
-    setTimeout(fetchPrograms, 50);
+    fetchPrograms('', 1);
   };
 
   return (

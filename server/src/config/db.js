@@ -4,22 +4,8 @@ const env = require('./env');
 let mongodInstance = null;
 
 const migrateFacultyAccounts = async () => {
-  try {
-    const db = mongoose.connection.db;
-    if (!db) return;
-    const usersCollection = db.collection('users');
-    const legacyFacultyCount = await usersCollection.countDocuments({ role: 'FACULTY' });
-    if (legacyFacultyCount > 0) {
-      console.log(`[Migration] Safely migrating ${legacyFacultyCount} legacy FACULTY account(s) to STUDENT role...`);
-      await usersCollection.updateMany(
-        { role: 'FACULTY' },
-        { $set: { role: 'STUDENT', migratedFromRole: 'FACULTY', migratedAt: new Date() } }
-      );
-      console.log(`[Migration] Successfully completed migration of FACULTY account(s) to STUDENT.`);
-    }
-  } catch (err) {
-    console.error(`[Migration Error] ${err.message}`);
-  }
+  // Multi-role RBAC restored: keep FACULTY, SUPPORT_STAFF, FINANCE_STAFF roles intact without coercing to STUDENT.
+  return;
 };
 
 const connectDB = async () => {

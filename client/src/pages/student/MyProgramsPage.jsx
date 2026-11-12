@@ -25,7 +25,7 @@ export const MyProgramsPage = () => {
         const res = await enrollmentService.getMyEnrollments();
         if (isMounted && res?.success && res.data) {
           const list = Array.isArray(res.data) ? res.data : res.data.enrollments || [];
-          setEnrollments(list.filter((e) => e.enrollmentStatus === 'ENROLLED'));
+          setEnrollments(list.filter((e) => ['ENROLLED', 'ACTIVE'].includes(e.enrollmentStatus)));
         }
       } catch (err) {
         console.error('Failed to load my programs', err);
@@ -40,9 +40,9 @@ export const MyProgramsPage = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif">
             My Enrolled Tuition & Coaching Programs
@@ -60,6 +60,7 @@ export const MyProgramsPage = () => {
         </Link>
       </div>
 
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
@@ -105,7 +106,7 @@ export const MyProgramsPage = () => {
                   <div className="p-3 bg-slate-50 rounded-xl space-y-1.5 text-xs text-slate-600">
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Batch Timing:</span>
-                      <span className="font-bold text-slate-800">{enr.batchTiming || 'Standard'}</span>
+                      <span className="font-bold text-slate-800">{enr.preferredBatch || enr.batchTiming || 'Standard'}</span>
                     </div>
                     <div className="flex items-center justify-between">
                       <span className="text-slate-400">Mode:</span>
@@ -146,6 +147,7 @@ export const MyProgramsPage = () => {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };

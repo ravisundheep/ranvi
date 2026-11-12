@@ -1,13 +1,17 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { GraduationCap, Lock, Mail, User, Phone, BookOpen, ArrowRight, ShieldCheck } from 'lucide-react';
+import { authService } from '../../services/authService';
+import { GraduationCap, Lock, Mail, User, Phone, BookOpen, ArrowRight, ShieldCheck, Gift, RefreshCw } from 'lucide-react';
 
 export const RegisterPage = () => {
   const { register } = useAuth();
   const { success, error: toastError } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const refParam = searchParams.get('ref') || '';
 
   const [formData, setFormData] = useState({
     name: '',
@@ -15,15 +19,61 @@ export const RegisterPage = () => {
     phone: '',
     password: '',
     targetExam: 'JAIIB 2026',
+    referralCode: refParam ? refParam.toUpperCase() : '',
   });
   const [loading, setLoading] = useState(false);
+  const [emailOtpEnabled, setEmailOtpEnabled] = useState(false);
+  const [otpStep, setOtpStep] = useState(false);
+  const [otp, setOtp] = useState('');
+  const [cooldown, setCooldown] = useState(0);
+
+  useEffect(() => {
+    authService.getOtpStatus()
+      .then((res) => {
+        if (res?.data?.emailOtpEnabled) {
+          setEmailOtpEnabled(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(t);
+  }, [cooldown]);
+
+  useEffect(() => {
+    if (refParam) {
+      setFormData((prev) => ({ ...prev, referralCode: refParam.toUpperCase() }));
+    }
+  }, [refParam]);
+
+  const handleRequestOtp = async () => {
+    setLoading(true);
+    try {
+      const res = await authService.sendOtp(formData.email.trim(), 'REGISTER');
+      success(res.message || `Verification OTP sent to ${formData.email}`);
+      setOtpStep(true);
+      setCooldown(60);
+    } catch (err) {
+      toastError(err.message || 'Could not send verification OTP.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setLoading(true);
+    if (emailOtpEnabled && !otpStep) {
+      await handleRequestOtp();
+      return;
+    }
 
+    setLoading(true);
     try {
-      const data = await register(formData);
+      const payload = emailOtpEnabled ? { ...formData, otp: otp.trim() } : formData;
+      const data = await register(payload);
       success(`Welcome to Ranvi Institutions, ${data.user.name}!`);
       navigate('/student/dashboard');
     } catch (err) {
@@ -50,20 +100,22 @@ export const RegisterPage = () => {
 
         <div className="bg-white rounded-3xl p-8 border border-slate-200 shadow-xl space-y-5">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
-              <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
-                <input
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  placeholder="e.g. Priya Sharma"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1769D2]"
-                />
-              </div>
-            </div>
+            {!otpStep ? (
+              <>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                    <input
+                      type="text"
+                      required
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="e.g. Priya Sharma"
+                      className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#1769D2]"
+                    />
+                  </div>
+                </div>
 
             <div>
               <label className="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
@@ -132,12 +184,74 @@ export const RegisterPage = () => {
               </div>
             </div>
 
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1">
+                Referral Code (Optional)
+              </label>
+              <div className="relative">
+                <Gift className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
+                <input
+                  type="text"
+                  value={formData.referralCode}
+                  onChange={(e) => setFormData({ ...formData, referralCode: e.target.value.toUpperCase() })}
+                  placeholder="e.g. RV8K29M"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-sm uppercase font-mono focus:outline-none focus:ring-2 focus:ring-[#1769D2]"
+                />
+              </div>
+              {formData.referralCode && (
+                <p className="text-[10px] text-emerald-600 font-bold mt-1">
+                  🎁 Referral code applied! Your friend will receive a reward when you enroll.
+                </p>
+              )}
+            </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-xs text-[#12356B]">
+                  We sent a 6-digit verification OTP to <strong>{formData.email}</strong>. Please enter it below to complete your registration.
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700">6-Digit Email OTP *</label>
+                    <button
+                      type="button"
+                      disabled={cooldown > 0 || loading}
+                      onClick={handleRequestOtp}
+                      className="text-[11px] font-bold text-[#1769D2] hover:underline disabled:text-slate-400 inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      {cooldown > 0 ? `Resend in ${cooldown}s` : 'Resend OTP'}
+                    </button>
+                  </div>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={6}
+                    required
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
+                    placeholder="Enter 6-digit OTP"
+                    className="w-full px-4 py-3 rounded-xl border border-slate-200 text-center text-lg font-mono tracking-[0.4em] font-bold focus:outline-none focus:ring-2 focus:ring-[#1769D2]"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setOtpStep(false)}
+                  className="text-xs font-bold text-slate-500 hover:text-[#12356B]"
+                >
+                  &larr; Edit registration details
+                </button>
+              </div>
+            )}
+
             <button
               type="submit"
               disabled={loading}
               className="w-full inline-flex items-center justify-center gap-2 bg-[#12356B] hover:bg-[#0e2a56] text-white font-extrabold py-3 px-4 rounded-xl text-sm transition-all shadow-md shadow-[#12356B]/20 disabled:opacity-50"
             >
-              {loading ? 'Creating Account...' : 'Register & Enter Student Portal'}
+              {loading
+                ? (otpStep ? 'Verifying & Creating Account...' : (emailOtpEnabled ? 'Sending OTP...' : 'Creating Account...'))
+                : (emailOtpEnabled && !otpStep ? 'Verify Email & Continue' : 'Register & Enter Student Portal')}
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>

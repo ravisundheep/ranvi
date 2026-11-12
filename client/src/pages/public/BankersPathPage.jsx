@@ -332,8 +332,8 @@ export const BankersPathPage = () => {
               >
                 <option value="ALL">All Modes</option>
                 <option value="ONLINE">Live Zoom Online</option>
-                <option value="CLASSROOM">Physical Classroom</option>
-                <option value="SELF_PACED">Recorded / Self-Paced</option>
+                <option value="OFFLINE">Physical Classroom</option>
+                <option value="BOTH">Hybrid (Online + Offline)</option>
               </select>
 
               {(searchQuery || selectedCat !== 'ALL' || selectedDivision !== 'BANKERS_PATH' || selectedMode !== 'ALL') && (

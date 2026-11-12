@@ -28,8 +28,31 @@ const UserSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['SUPER_ADMIN', 'ADMIN', 'STUDENT'],
+    enum: ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF', 'STUDENT'],
     default: 'STUDENT',
+  },
+  staffDepartment: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  staffDesignation: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  assignedDivisions: [{
+    type: String,
+    trim: true,
+  }],
+  assignedCourses: [{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Course',
+  }],
+  createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
   },
   isActive: {
     type: Boolean,
@@ -57,6 +80,37 @@ const UserSchema = new mongoose.Schema({
   targetExam: {
     type: String,
     default: '',
+  },
+  studentId: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+  },
+  referralCode: {
+    type: String,
+    unique: true,
+    sparse: true,
+    index: true,
+    uppercase: true,
+    trim: true,
+  },
+  referredBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    default: null,
+  },
+  walletBalance: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
+  payoutDetails: {
+    upiId: { type: String, trim: true, default: '' },
+    bankAccountNumber: { type: String, trim: true, default: '' },
+    ifscCode: { type: String, trim: true, uppercase: true, default: '' },
+    accountHolderName: { type: String, trim: true, default: '' },
+    bankName: { type: String, trim: true, default: '' },
   },
   migratedFromRole: {
     type: String,

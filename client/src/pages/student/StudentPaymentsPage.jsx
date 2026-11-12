@@ -23,8 +23,8 @@ export const StudentPaymentsPage = () => {
   }, []);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs">
         <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
           Payment History & Invoices
         </h1>
@@ -33,6 +33,7 @@ export const StudentPaymentsPage = () => {
         </p>
       </div>
 
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       {loading ? (
         <div className="py-16 text-center">
           <div className="w-8 h-8 border-4 border-[#1769D2] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
@@ -79,7 +80,7 @@ export const StudentPaymentsPage = () => {
                       </span>
                     </td>
                     <td className="p-4 font-mono text-[11px] text-slate-500">
-                      {order.paymentId?.razorpayPaymentId || 'Verified'}
+                      {order.paymentId?.razorpayPaymentId || (order.status === 'PAID' ? 'Verified' : '—')}
                     </td>
                   </tr>
                 ))}
@@ -96,6 +97,7 @@ export const StudentPaymentsPage = () => {
           </p>
         </div>
       )}
+      </div>
     </div>
   );
 };

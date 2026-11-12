@@ -1,11 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { adminService, courseService } from '../../services';
+import { adminService, courseService, examService } from '../../services';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { CreditCard, Plus, ShieldCheck, UserPlus, CheckCircle2, Search, X, Filter, RotateCcw } from 'lucide-react';
 
 export const AdminPaymentsPage = () => {
+  const { isAdmin } = useAuth();
   const [orders, setOrders] = useState([]);
   const [courses, setCourses] = useState([]);
+  const [mockTests, setMockTests] = useState([]);
   const [students, setStudents] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
@@ -23,19 +26,27 @@ export const AdminPaymentsPage = () => {
 
   const fetchData = async () => {
     try {
-      const [payRes, courseRes, studentRes] = await Promise.all([
-        adminService.getAllPayments({ limit: 50 }),
-        courseService.getCourses({ limit: 50 }),
-        adminService.getStudents({ limit: 100 }),
-      ]);
-      if (payRes.success && payRes.data) setOrders(payRes.data.orders || []);
-      if (courseRes.success && courseRes.data) {
+      const promises = [adminService.getAllPayments({ limit: 50 })];
+      if (isAdmin) {
+        promises.push(
+          courseService.getCourses({ includeUnpublished: 'true', limit: 100 }),
+          examService.getMockTests({ includeUnpublished: 'true', limit: 100 }),
+          adminService.getStudents({ limit: 100 })
+        );
+      }
+
+      const [payRes, courseRes, testRes, studentRes] = await Promise.all(promises);
+      if (payRes?.success && payRes.data) setOrders(payRes.data.orders || []);
+      if (courseRes?.success && courseRes.data) {
         setCourses(courseRes.data.courses || []);
         if (courseRes.data.courses?.length > 0 && !grantForm.itemId) {
           setGrantForm(prev => ({ ...prev, itemId: courseRes.data.courses[0]._id }));
         }
       }
-      if (studentRes.success && studentRes.data) {
+      if (testRes?.success && testRes.data) {
+        setMockTests(testRes.data.tests || []);
+      }
+      if (studentRes?.success && studentRes.data) {
         setStudents(studentRes.data.students || []);
         if (studentRes.data.students?.length > 0 && !grantForm.studentId) {
           setGrantForm(prev => ({ ...prev, studentId: studentRes.data.students[0]._id }));
@@ -92,8 +103,8 @@ export const AdminPaymentsPage = () => {
   }, [orders, statusFilter, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Payments Ledger & Access Grants
@@ -111,7 +122,7 @@ export const AdminPaymentsPage = () => {
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           {/* Status Filter */}
           <select
@@ -121,7 +132,7 @@ export const AdminPaymentsPage = () => {
           >
             <option value="ALL">All Payment Statuses</option>
             <option value="PAID">Paid / Verified</option>
-            <option value="CREATED">Created / Pending</option>
+            <option value="PENDING">Pending / Created</option>
             <option value="FAILED">Failed</option>
           </select>
 
@@ -166,7 +177,8 @@ export const AdminPaymentsPage = () => {
       </div>
 
       {/* Transactions Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -216,6 +228,7 @@ export const AdminPaymentsPage = () => {
           </table>
         </div>
       </div>
+      </div>
 
       {/* Manual Grant Modal */}
       {showGrantModal && (
@@ -240,14 +253,38 @@ export const AdminPaymentsPage = () => {
               </div>
 
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Select Program *</label>
+                <label className="block font-bold text-slate-700 mb-1">Grant Type *</label>
+                <select
+                  value={grantForm.itemType}
+                  onChange={(e) => {
+                    const nextType = e.target.value;
+                    const nextList = nextType === 'MOCK_TEST_PACKAGE' ? mockTests : courses;
+                    setGrantForm({
+                      ...grantForm,
+                      itemType: nextType,
+                      itemId: nextList[0]?._id || '',
+                    });
+                  }}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="COURSE">Course / Tuition Program</option>
+                  <option value="MOCK_TEST_PACKAGE">Mock Test Package</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  {grantForm.itemType === 'MOCK_TEST_PACKAGE' ? 'Select Mock Test *' : 'Select Program *'}
+                </label>
                 <select
                   value={grantForm.itemId}
                   onChange={(e) => setGrantForm({ ...grantForm, itemId: e.target.value })}
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
                 >
-                  {courses.map(c => (
-                    <option key={c._id} value={c._id}>{c.title} (₹{c.fee})</option>
+                  {(grantForm.itemType === 'MOCK_TEST_PACKAGE' ? mockTests : courses).map((item) => (
+                    <option key={item._id} value={item._id}>
+                      {item.title} (₹{item.fee ?? item.price ?? 0})
+                    </option>
                   ))}
                 </select>
               </div>

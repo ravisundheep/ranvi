@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { courseService } from '../../services';
 import { useAuth } from '../../context/AuthContext';
+import { LessonMediaPlayer } from '../../components/courses/LessonMediaPlayer';
 import {
   GraduationCap,
   Clock,
@@ -35,6 +36,20 @@ export const CourseDetailsPage = () => {
   const [openFaqIdx, setOpenFaqIdx] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const selectLessonForPlayback = async (lesson) => {
+    if (!lesson) return;
+    try {
+      const pbRes = await courseService.getLessonPlayback(lesson._id);
+      if (pbRes?.success && pbRes.data?.lesson) {
+        setActiveLesson({ ...lesson, ...pbRes.data.lesson, isUnlocked: true });
+      } else {
+        setActiveLesson(lesson);
+      }
+    } catch (err) {
+      console.error('Playback error:', err);
+    }
+  };
+
   useEffect(() => {
     const fetchCourse = async () => {
       try {
@@ -46,10 +61,10 @@ export const CourseDetailsPage = () => {
           // Fetch lessons
           const lessonRes = await courseService.getCourseLessons(res.data.course._id);
           if (lessonRes.success && lessonRes.data) {
-            setLessons(lessonRes.data.lessons || []);
-            // Set first preview lesson as active by default if available
-            const firstPreview = lessonRes.data.lessons.find(l => l.isPreview);
-            if (firstPreview) setActiveLesson(firstPreview);
+            const list = lessonRes.data.lessons || [];
+            setLessons(list);
+            const firstPreview = list.find(l => l.isPreview || l.isUnlocked);
+            if (firstPreview) await selectLessonForPlayback(firstPreview);
           }
         }
       } catch (err) {
@@ -247,15 +262,7 @@ export const CourseDetailsPage = () => {
                   )}
                 </div>
 
-                <div className="aspect-video w-full bg-black rounded-xl overflow-hidden">
-                  <video
-                    src={activeLesson.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
-                    controls
-                    controlsList="nodownload"
-                    className="w-full h-full object-contain"
-                    poster={course.thumbnail}
-                  />
-                </div>
+                <LessonMediaPlayer lesson={activeLesson} poster={course.thumbnail} />
                 <p className="text-xs text-slate-300 px-1">{activeLesson.description}</p>
               </div>
             )}
@@ -267,7 +274,7 @@ export const CourseDetailsPage = () => {
                 return (
                   <div
                     key={lesson._id}
-                    onClick={() => isUnlocked && setActiveLesson(lesson)}
+                    onClick={() => isUnlocked && selectLessonForPlayback(lesson)}
                     className={`p-4 rounded-2xl border transition-all flex items-center justify-between gap-4 ${
                       isUnlocked
                         ? 'bg-slate-50 hover:bg-[#EAF3FF] border-slate-200 cursor-pointer'

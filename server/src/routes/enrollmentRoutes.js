@@ -3,16 +3,17 @@ const router = express.Router();
 const enrollmentController = require('../controllers/enrollmentController');
 const { authenticate } = require('../middleware/authenticate');
 const { authorize } = require('../middleware/authorize');
+const { paymentLimiter } = require('../middleware/rateLimiter');
 
 // Student endpoints
-router.post('/intent', authenticate, enrollmentController.createEnrollmentIntent);
-router.post('/verify', authenticate, enrollmentController.verifyEnrollmentPayment);
+router.post('/intent', authenticate, paymentLimiter, enrollmentController.createEnrollmentIntent);
+router.post('/verify', authenticate, paymentLimiter, enrollmentController.verifyEnrollmentPayment);
 router.get('/my', authenticate, enrollmentController.getMyEnrollments);
 router.get('/my/:id', authenticate, enrollmentController.getMyEnrollmentById);
 
-// Admin endpoints
-router.get('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), enrollmentController.getAdminEnrollments);
-router.get('/admin/stats', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), enrollmentController.getAdminEnrollmentStats);
-router.put('/admin/:id/status', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), enrollmentController.updateAdminEnrollmentStatus);
+// Admin / Support / Finance endpoints
+router.get('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'FINANCE_STAFF'), enrollmentController.getAdminEnrollments);
+router.get('/admin/stats', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF', 'FINANCE_STAFF'), enrollmentController.getAdminEnrollmentStats);
+router.put('/admin/:id/status', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'FINANCE_STAFF'), enrollmentController.updateAdminEnrollmentStatus);
 
 module.exports = router;

@@ -76,6 +76,18 @@ export const courseService = {
   getCategories: async (params = {}) => {
     return cachedGet('/courses/categories', params, 120000);
   },
+  createCategory: async (data) => {
+    clearClientCache('/courses/categories');
+    return api.post('/courses/categories', data);
+  },
+  updateCategory: async (id, data) => {
+    clearClientCache('/courses/categories');
+    return api.put(`/courses/categories/${id}`, data);
+  },
+  deleteCategory: async (id) => {
+    clearClientCache('/courses/categories');
+    return api.delete(`/courses/categories/${id}`);
+  },
   getAvailableStates: async () => {
     try {
       const res = await cachedGet('/courses/states', {}, 300000);
@@ -149,6 +161,9 @@ export const uploadService = {
 };
 
 export const liveClassService = {
+  getPublicSchedule: async () => {
+    return api.get('/live-classes/public-schedule');
+  },
   getStudentLiveClasses: async () => {
     return api.get('/live-classes/student');
   },
@@ -191,6 +206,7 @@ export const examService = {
   getMyExamHistory: async () => {
     return api.get('/exam-attempts/my-history');
   },
+  getMockTestLeaderboard: (mockTestId) => api.get(`/mock-tests/${mockTestId}/leaderboard`),
 };
 
 export const paymentService = {
@@ -198,6 +214,7 @@ export const paymentService = {
     return api.post('/payments/checkout', data);
   },
   verifyPayment: async (data) => {
+    clearClientCache('/courses');
     return api.post('/payments/verify', data);
   },
   getMyPaymentHistory: async () => {
@@ -209,11 +226,17 @@ export const enquiryService = {
   submitEnquiry: async (data) => {
     return api.post('/enquiries', data);
   },
+  getMyRequests: async () => {
+    return api.get('/enquiries/my-requests');
+  },
 };
 
 export const adminService = {
   getDashboardStats: async () => {
     return api.get('/admin/dashboard-stats');
+  },
+  getReportsData: async () => {
+    return api.get('/admin/reports');
   },
   getStudents: async (params = {}) => {
     return api.get('/admin/students', { params });
@@ -234,6 +257,7 @@ export const adminService = {
     return api.get('/payments/admin/all', { params });
   },
   grantManualAccess: async (data) => {
+    clearClientCache('/courses');
     return api.post('/payments/admin/grant-manual', data);
   },
   getEnquiries: async (params = {}) => {
@@ -241,6 +265,9 @@ export const adminService = {
   },
   updateEnquiryStatus: async (id, data) => {
     return api.put(`/enquiries/admin/${id}`, data);
+  },
+  assignEnquiry: async (id, data) => {
+    return api.put(`/enquiries/admin/${id}/assign`, data);
   },
   getSiteSettings: async () => {
     return cachedGet('/site-settings', {}, 60000);
@@ -310,42 +337,7 @@ export const adminService = {
 
 export const latestUpdateService = {
   getPublishedUpdates: async (params = {}) => {
-    try {
-      return await cachedGet('/latest-updates/public', params, 30000);
-    } catch (err) {
-      // Graceful fallback if remote server has not yet deployed this endpoint
-      return {
-        success: true,
-        data: {
-          updates: [
-            {
-              _id: 'default-update-1',
-              title: 'New Batches for JAIIB, CAIIB, IBPS PO & SBI PO starting this week!',
-              badgeText: 'ADMISSIONS OPEN',
-              publishedAt: new Date().toISOString(),
-            },
-            {
-              _id: 'default-update-2',
-              title: 'Admissions Open 2026: Live Zoom Classes with Senior Ex-Bankers & Daily Doubt Sessions',
-              badgeText: 'LIVE CLASSES',
-              publishedAt: new Date().toISOString(),
-            },
-            {
-              _id: 'default-update-3',
-              title: '10–20 Real Pattern Online Mock Tests with All India Rank & Instant Analysis',
-              badgeText: 'MOCK TESTS',
-              publishedAt: new Date().toISOString(),
-            },
-            {
-              _id: 'default-update-4',
-              title: 'School, Intermediate & Degree Tuitions Admissions Now Open',
-              badgeText: 'TUITIONS',
-              publishedAt: new Date().toISOString(),
-            },
-          ],
-        },
-      };
-    }
+    return cachedGet('/latest-updates/public', params, 30000);
   },
   getUpdateById: async (id) => {
     return api.get(`/latest-updates/public/${id}`);
@@ -373,42 +365,7 @@ export const latestUpdateService = {
 
 export const publicNotificationService = {
   getPublicNotifications: async (params = {}) => {
-    try {
-      return await cachedGet('/notifications/public', params, 30000);
-    } catch (err) {
-      // Graceful fallback if remote server has not yet deployed this endpoint
-      return {
-        success: true,
-        data: {
-          notifications: [
-            {
-              _id: 'default-notif-1',
-              title: 'JAIIB & CAIIB 2026 Batch Admissions Open',
-              description: 'Official registration for upcoming JAIIB & CAIIB master batches is currently underway with morning & evening slots.',
-              type: 'ADMISSION',
-              isPinned: true,
-              publishedAt: new Date().toISOString(),
-            },
-            {
-              _id: 'default-notif-2',
-              title: 'IBPS PO Prelims 2026 Mock Test Series Activated',
-              description: 'Full syllabus mock tests with sectional timings and detailed analytics are now accessible in the student portal.',
-              type: 'EXAM_ALERT',
-              isPinned: true,
-              publishedAt: new Date().toISOString(),
-            },
-            {
-              _id: 'default-notif-3',
-              title: 'Live Interactive Zoom Classes Schedule Updated',
-              description: 'Check your daily live class timetable and join links from the Live Classes tab in your student dashboard.',
-              type: 'ANNOUNCEMENT',
-              isPinned: false,
-              publishedAt: new Date().toISOString(),
-            },
-          ],
-        },
-      };
-    }
+    return cachedGet('/notifications/public', params, 30000);
   },
   getPublicNotificationById: async (id) => {
     return api.get(`/notifications/public/${id}`);
@@ -436,7 +393,15 @@ export const publicNotificationService = {
     clearClientCache('/notifications');
     return api.patch(`/notifications/admin/${id}/toggle-pinned`);
   },
+  getMyNotifications: async () => {
+    return api.get('/notifications/my');
+  },
+  markAsRead: async (id = 'all') => {
+    return api.put(`/notifications/mark-read/${id}`);
+  },
 };
+
+export const notificationService = publicNotificationService;
 
 export const enrollmentService = {
   createIntent: async (data) => {
@@ -487,6 +452,47 @@ export const tuitionService = {
   deleteTuitionProgram: async (id) => {
     clearClientCache('/courses');
     return api.delete(`/courses/${id}?permanent=true`);
+  },
+};
+
+export const staffService = {
+  getStaff: async (params = {}) => {
+    return api.get('/admin/staff', { params });
+  },
+  createStaff: async (data) => {
+    return api.post('/admin/staff', data);
+  },
+  updateStaff: async (staffId, data) => {
+    return api.put(`/admin/staff/${staffId}`, data);
+  },
+  resetStaffPassword: async (staffId, newPassword) => {
+    return api.post(`/admin/staff/${staffId}/reset-password`, { newPassword });
+  },
+  getApprovals: async (params = {}) => {
+    return api.get('/admin/approvals', { params });
+  },
+  createApproval: async (data) => {
+    return api.post('/admin/approvals', data);
+  },
+  reviewApproval: async (id, decision, reviewedNote = '') => {
+    clearClientCache('/courses');
+    return api.put(`/admin/approvals/${id}/review`, { decision, reviewedNote });
+  },
+  getReportsData: () => api.get('/admin/reports'),
+};
+
+export const walletService = {
+  getMyWallet: async () => {
+    return api.get('/wallet/my-wallet');
+  },
+  requestPayout: async (data) => {
+    return api.post('/wallet/payout-request', data);
+  },
+  getAdminPayouts: async (params = {}) => {
+    return api.get('/wallet/admin/payouts', { params });
+  },
+  processAdminPayout: async (id, data) => {
+    return api.put(`/wallet/admin/payouts/${id}`, data);
   },
 };
 

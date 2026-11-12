@@ -27,7 +27,7 @@ const MockTestSchema = new mongoose.Schema({
   },
   division: {
     type: String,
-    enum: ['BANKERS_PATH', 'COMPETITIVE_EXAMS'],
+    enum: ['BANKERS_PATH', 'COMPETITIVE_EXAMS', 'ENTRANCE_EXAMS', 'TUITIONS'],
     required: true,
   },
   description: {
@@ -98,6 +98,14 @@ const MockTestSchema = new mongoose.Schema({
   attemptsCount: {
     type: Number,
     default: 0,
+  },
+  maxAttempts: {
+    type: Number,
+    default: 0,  // 0 = unlimited
+  },
+  negativeMarkingEnabled: {
+    type: Boolean,
+    default: true,
   },
 }, {
   timestamps: true,

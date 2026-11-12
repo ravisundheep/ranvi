@@ -54,7 +54,7 @@ export const AdminEnrollmentsPage = () => {
           paymentStatus: paymentFilter !== 'ALL' ? paymentFilter : undefined,
           limit: 50,
         }),
-        enrollmentService.getAdminEnrollmentStats(),
+        enrollmentService.getAdminStats(),
       ]);
 
       if (enrollRes.status === 'fulfilled' && enrollRes.value?.success) {
@@ -83,7 +83,7 @@ export const AdminEnrollmentsPage = () => {
 
     try {
       setUpdating(true);
-      const res = await enrollmentService.updateAdminEnrollmentStatus(selectedEnrollment._id, {
+      const res = await enrollmentService.updateAdminStatus(selectedEnrollment._id, {
         enrollmentStatus: newStatus,
         notes: statusNotes,
       });
@@ -101,9 +101,9 @@ export const AdminEnrollmentsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
             Student Enrollments & Admissions Management
@@ -115,11 +115,11 @@ export const AdminEnrollmentsPage = () => {
       </div>
 
       {/* KPI Stats Grid */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="shrink-0 grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[11px] font-semibold text-slate-400 uppercase">Total Applications</span>
-            <p className="text-xl font-black text-slate-900">{stats.totalEnrollments || enrollments.length}</p>
+            <p className="text-xl font-black text-slate-900">{stats.total ?? stats.totalEnrollments ?? enrollments.length}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center">
             <Users className="w-5 h-5" />
@@ -129,7 +129,7 @@ export const AdminEnrollmentsPage = () => {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[11px] font-semibold text-slate-400 uppercase">Confirmed Enrolled</span>
-            <p className="text-xl font-black text-emerald-600">{stats.enrolledCount || 0}</p>
+            <p className="text-xl font-black text-emerald-600">{stats.enrolled ?? stats.enrolledCount ?? 0}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
             <CheckCircle2 className="w-5 h-5" />
@@ -139,7 +139,7 @@ export const AdminEnrollmentsPage = () => {
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
           <div className="space-y-1">
             <span className="text-[11px] font-semibold text-slate-400 uppercase">Pending Verification</span>
-            <p className="text-xl font-black text-amber-600">{stats.pendingCount || 0}</p>
+            <p className="text-xl font-black text-amber-600">{stats.pending ?? stats.pendingCount ?? 0}</p>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center">
             <Clock className="w-5 h-5" />
@@ -160,7 +160,7 @@ export const AdminEnrollmentsPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -202,7 +202,8 @@ export const AdminEnrollmentsPage = () => {
       </div>
 
       {/* Table */}
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading student enrollments...</p>
@@ -231,6 +232,9 @@ export const AdminEnrollmentsPage = () => {
               <tbody className="divide-y divide-slate-100">
                 {enrollments.map((enr) => {
                   const student = enr.studentDetails || enr.studentId || {};
+                  const studentName = enr.studentName || student.name || 'Student';
+                  const studentEmail = enr.studentEmail || student.email || '';
+                  const studentPhone = enr.studentPhone || student.phone || '';
                   const course = enr.courseId || {};
                   const isEnrolled = enr.enrollmentStatus === 'ENROLLED';
                   const isPaid = enr.paymentStatus === 'PAID';
@@ -242,10 +246,10 @@ export const AdminEnrollmentsPage = () => {
                       </td>
                       <td className="p-3.5">
                         <div className="space-y-0.5">
-                          <p className="font-bold text-slate-900">{student.name || 'Student'}</p>
-                          <p className="text-[11px] text-slate-500">{student.email}</p>
-                          {student.phone && (
-                            <p className="text-[10.5px] text-slate-400">📱 {student.phone}</p>
+                          <p className="font-bold text-slate-900">{studentName}</p>
+                          <p className="text-[11px] text-slate-500">{studentEmail}</p>
+                          {studentPhone && (
+                            <p className="text-[10.5px] text-slate-400">📱 {studentPhone}</p>
                           )}
                         </div>
                       </td>
@@ -255,7 +259,7 @@ export const AdminEnrollmentsPage = () => {
                             {course.title || 'Tuition Program'}
                           </p>
                           <p className="text-[11px] text-slate-500 line-clamp-1">
-                            Batch: {enr.batchTiming || 'Standard'}
+                            Batch: {enr.preferredBatch || enr.batchTiming || 'Standard'}
                           </p>
                         </div>
                       </td>
@@ -320,6 +324,7 @@ export const AdminEnrollmentsPage = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Status Update Modal */}
       {editStatusModalOpen && selectedEnrollment && (
@@ -342,7 +347,9 @@ export const AdminEnrollmentsPage = () => {
               <div className="p-3 bg-slate-50 rounded-xl space-y-1">
                 <span className="text-[10px] text-slate-400 font-semibold uppercase">Enrollment</span>
                 <p className="font-bold text-slate-900">{selectedEnrollment.enrollmentId}</p>
-                <p className="text-slate-600">{selectedEnrollment.studentDetails?.name} • {selectedEnrollment.courseId?.title}</p>
+                <p className="text-slate-600">
+                  {selectedEnrollment.studentName || selectedEnrollment.studentDetails?.name || selectedEnrollment.studentId?.name} • {selectedEnrollment.courseId?.title}
+                </p>
               </div>
 
               <div>
@@ -427,20 +434,30 @@ export const AdminEnrollmentsPage = () => {
               <div className="grid grid-cols-2 gap-3">
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Student Name</span>
-                  <p className="font-bold text-slate-900">{selectedEnrollment.studentDetails?.name}</p>
-                  <p className="text-[10px] text-slate-500">{selectedEnrollment.studentDetails?.email}</p>
+                  <p className="font-bold text-slate-900">
+                    {selectedEnrollment.studentName || selectedEnrollment.studentDetails?.name || selectedEnrollment.studentId?.name}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    {selectedEnrollment.studentEmail || selectedEnrollment.studentDetails?.email || selectedEnrollment.studentId?.email}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Contact Phone</span>
-                  <p className="font-bold text-slate-900">{selectedEnrollment.studentDetails?.phone || '—'}</p>
-                  <p className="text-[10px] text-slate-500">Guardian: {selectedEnrollment.studentDetails?.parentName || '—'}</p>
+                  <p className="font-bold text-slate-900">
+                    {selectedEnrollment.studentPhone || selectedEnrollment.studentDetails?.phone || selectedEnrollment.studentId?.phone || '—'}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Guardian: {selectedEnrollment.parentName || selectedEnrollment.studentDetails?.parentName || '—'}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Program</span>
                   <p className="font-bold text-slate-900">{selectedEnrollment.courseId?.title}</p>
-                  <p className="text-[10px] text-slate-500">Batch: {selectedEnrollment.batchTiming}</p>
+                  <p className="text-[10px] text-slate-500">
+                    Batch: {selectedEnrollment.preferredBatch || selectedEnrollment.batchTiming || 'Morning Batch'}
+                  </p>
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
@@ -450,10 +467,10 @@ export const AdminEnrollmentsPage = () => {
                 </div>
               </div>
 
-              {selectedEnrollment.studentDetails?.address && (
+              {(selectedEnrollment.address || selectedEnrollment.studentDetails?.address) && (
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] text-slate-400 font-semibold uppercase">Residential Address</span>
-                  <p className="text-slate-800">{selectedEnrollment.studentDetails.address}</p>
+                  <p className="text-slate-800">{selectedEnrollment.address || selectedEnrollment.studentDetails?.address}</p>
                 </div>
               )}
             </div>

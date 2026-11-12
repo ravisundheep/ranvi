@@ -24,6 +24,8 @@ export const CheckoutPage = () => {
   const navigate = useNavigate();
 
   const [item, setItem] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [useWallet, setUseWallet] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
 
@@ -36,14 +38,19 @@ export const CheckoutPage = () => {
     const fetchItem = async () => {
       try {
         if (itemType === 'COURSE' && itemId) {
-          // fetch course
-          const res = await courseService.getCourses({ limit: 50 });
-          const found = res.data.courses?.find(c => c._id === itemId || c.slug === itemId);
-          if (found) setItem(found);
+          const res = await courseService.getCourseBySlug(itemId);
+          if (res?.success && res.data) {
+            const courseData = res.data.course || res.data;
+            setItem(courseData);
+            if (Array.isArray(courseData.subscriptionPlans) && courseData.subscriptionPlans.length > 0) {
+              setSelectedPlan(courseData.subscriptionPlans[0]);
+            }
+          }
         } else if (itemType === 'MOCK_TEST_PACKAGE' && itemId) {
-          const res = await examService.getMockTests({ limit: 50 });
-          const found = res.data.tests?.find(t => t._id === itemId || t.slug === itemId);
-          if (found) setItem(found);
+          const res = await examService.getMockTestBySlug(itemId);
+          if (res?.success && res.data) {
+            setItem(res.data.test || res.data);
+          }
         }
       } catch (err) {
         console.error(err);
@@ -60,10 +67,14 @@ export const CheckoutPage = () => {
     setProcessing(true);
 
     try {
+      const activeFee = selectedPlan ? selectedPlan.price : (itemType === 'COURSE' ? item.fee : (item.price || 399));
       // 1. Create order on backend
       const orderRes = await paymentService.createCheckoutOrder({
         itemType,
         itemId: item._id,
+        amount: activeFee,
+        durationMonths: selectedPlan ? selectedPlan.durationMonths : null,
+        useWallet,
       });
 
       if (!orderRes.success) {
@@ -74,73 +85,69 @@ export const CheckoutPage = () => {
 
       // If price is 0 (Free access)
       if (orderRes.data.isFree) {
-        success('Free access activated! Welcome to your course.');
+        success('Free access activated! Welcome to your program.');
         navigate('/student/my-courses');
+        setProcessing(false);
         return;
       }
 
-      // Check if Razorpay SDK is loaded
-      if (window.Razorpay && !razorpayOrderId.startsWith('order_dev_') && !razorpayOrderId.startsWith('order_test_')) {
-        const options = {
-          key: keyId,
-          amount: amount * 100,
-          currency: currency || 'INR',
-          name: 'Ranvi Institutions',
-          description: `Enrolment for ${item.title}`,
-          order_id: razorpayOrderId,
-          prefill: {
-            name: user.name,
-            email: user.email,
-            contact: user.phone,
-          },
-          theme: {
-            color: '#12356B',
-          },
-          handler: async function (response) {
-            // Authoritative server-side verification
-            try {
-              const verifyRes = await paymentService.verifyPayment({
-                orderId,
-                razorpayPaymentId: response.razorpay_payment_id,
-                razorpayOrderId: response.razorpay_order_id,
-                razorpaySignature: response.razorpay_signature,
-              });
-
-              if (verifyRes.success) {
-                success('Payment verified! Your course is now active.');
-                navigate('/student/my-courses');
-              }
-            } catch (vErr) {
-              toastError(vErr.message || 'Payment verification failed');
-            }
-          },
-          modal: {
-            ondismiss: function () {
-              setProcessing(false);
-            },
-          },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } else {
-        // Test / Sandbox auto-verify simulation
-        const mockPaymentId = `pay_test_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        const verifyRes = await paymentService.verifyPayment({
-          orderId,
-          razorpayPaymentId: mockPaymentId,
-          razorpayOrderId,
-          razorpaySignature: 'dev_mock_signature_verified',
-        });
-
-        if (verifyRes.success) {
-          success('Payment simulated successfully! Course access activated.');
-          navigate('/student/my-courses');
-        }
+      // Require authentic Razorpay Checkout SDK
+      if (!window.Razorpay) {
+        toastError('Razorpay payment gateway could not load. Please refresh the page and check your network connection.');
+        setProcessing(false);
+        return;
       }
+
+      const options = {
+        key: keyId,
+        amount: Math.round(amount * 100),
+        currency: currency || 'INR',
+        name: 'Ranvi Institutions',
+        description: `Enrolment for ${item.title}`,
+        order_id: razorpayOrderId,
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone,
+        },
+        theme: {
+          color: '#12356B',
+        },
+        handler: async function (response) {
+          // Authoritative server-side verification
+          try {
+            const verifyRes = await paymentService.verifyPayment({
+              orderId,
+              razorpayPaymentId: response.razorpay_payment_id,
+              razorpayOrderId: response.razorpay_order_id,
+              razorpaySignature: response.razorpay_signature,
+            });
+
+            if (verifyRes.success) {
+              success('Payment verified! Your access is now active.');
+              navigate(itemType === 'MOCK_TEST_PACKAGE' ? '/student/mock-tests' : '/student/my-courses');
+            }
+          } catch (vErr) {
+            toastError(vErr.message || 'Payment verification failed');
+          } finally {
+            setProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        toastError(response?.error?.description || 'Payment failed in gateway. Please retry.');
+        setProcessing(false);
+      });
+      rzp.open();
     } catch (err) {
       toastError(err.message || 'Checkout failed. Please try again.');
-    } finally {
       setProcessing(false);
     }
   };
@@ -166,7 +173,10 @@ export const CheckoutPage = () => {
     );
   }
 
-  const fee = itemType === 'COURSE' ? item.fee : (item.price || 399);
+  const rawFee = selectedPlan ? selectedPlan.price : (itemType === 'COURSE' ? item.fee : (item.price || 399));
+  const walletBalance = user?.walletBalance || 0;
+  const walletDeduction = useWallet ? Math.min(rawFee, walletBalance) : 0;
+  const fee = Math.max(0, rawFee - walletDeduction);
 
   return (
     <div className="min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
@@ -191,6 +201,44 @@ export const CheckoutPage = () => {
                 {item.title}
               </h3>
             </div>
+
+            {/* Subscription Duration Selection */}
+            {Array.isArray(item.subscriptionPlans) && item.subscriptionPlans.length > 0 && (
+              <div className="p-4 bg-blue-50/60 rounded-2xl border border-blue-200 space-y-2.5">
+                <span className="text-[11px] font-black text-[#12356B] uppercase tracking-wider block">
+                  Select Subscription Duration:
+                </span>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {item.subscriptionPlans.map((plan, idx) => {
+                    const isSelected = selectedPlan?.durationMonths === plan.durationMonths;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setSelectedPlan(plan)}
+                        className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'bg-white border-[#1769D2] ring-2 ring-[#1769D2]/30 shadow-xs'
+                            : 'bg-white/70 border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="text-xs font-bold text-[#12356B]">
+                          {plan.label || `${plan.durationMonths} Months`}
+                        </div>
+                        <div className="text-sm font-black text-[#1769D2] mt-0.5">
+                          ₹{plan.price?.toLocaleString('en-IN')}
+                        </div>
+                        {plan.originalPrice && plan.originalPrice > plan.price && (
+                          <div className="text-[10px] text-slate-400 line-through">
+                            ₹{plan.originalPrice?.toLocaleString('en-IN')}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2.5 text-xs text-slate-600">
               <p className="flex items-center gap-2">
@@ -228,8 +276,28 @@ export const CheckoutPage = () => {
               <div className="space-y-2 text-xs">
                 <div className="flex justify-between text-slate-600">
                   <span>Program Fee</span>
-                  <span className="font-bold">₹{fee?.toLocaleString('en-IN')}</span>
+                  <span className="font-bold">₹{rawFee?.toLocaleString('en-IN')}</span>
                 </div>
+                {walletBalance > 0 && (
+                  <label className="flex items-center justify-between p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/70 cursor-pointer">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={useWallet}
+                        onChange={(e) => setUseWallet(e.target.checked)}
+                        className="rounded text-emerald-600 focus:ring-0"
+                      />
+                      <span className="text-[11px] font-bold text-emerald-900">Apply Wallet Balance</span>
+                    </div>
+                    <span className="text-[11px] font-black text-emerald-700">₹{walletBalance}</span>
+                  </label>
+                )}
+                {walletDeduction > 0 && (
+                  <div className="flex justify-between text-emerald-700 font-bold">
+                    <span>Wallet Balance Applied</span>
+                    <span>-₹{walletDeduction?.toLocaleString('en-IN')}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-slate-600">
                   <span>GST (18% Included)</span>
                   <span className="font-bold">₹0.00</span>
@@ -250,10 +318,10 @@ export const CheckoutPage = () => {
               <button
                 onClick={handlePayNow}
                 disabled={processing}
-                className="w-full inline-flex items-center justify-center gap-2 bg-[#12356B] hover:bg-[#0e2a56] text-white font-extrabold py-3.5 px-4 rounded-xl text-sm transition-all shadow-lg shadow-[#12356B]/20 disabled:opacity-50"
+                className="w-full inline-flex items-center justify-center gap-2 bg-[#12356B] hover:bg-[#0e2a56] text-white font-extrabold py-3.5 px-4 rounded-xl text-sm transition-all shadow-lg shadow-[#12356B]/20 disabled:opacity-50 cursor-pointer"
               >
                 <Lock className="w-4 h-4 text-[#F4B942]" />
-                {processing ? 'Processing Payment...' : `Pay ₹${fee} via Razorpay`}
+                {processing ? 'Processing Payment...' : fee === 0 ? 'Activate Course with Wallet' : `Pay ₹${fee} via Razorpay`}
               </button>
 
               <div className="flex items-center justify-center gap-1.5 text-[10px] text-slate-400 font-semibold">

@@ -31,6 +31,7 @@ export const ExamTakePage = () => {
   const [showSubmitModal, setShowSubmitModal] = useState(false);
 
   const timerRef = useRef(null);
+  const submittedRef = useRef(false);
 
   useEffect(() => {
     const startSession = async () => {
@@ -39,7 +40,7 @@ export const ExamTakePage = () => {
         if (res.success && res.data) {
           setSession(res.data);
           setQuestions(res.data.questions || []);
-          setRemainingSeconds(res.data.remainingSeconds || 3600);
+          setRemainingSeconds(res.data.remainingSeconds ?? 3600);
 
           // Rehydrate existing responses if resuming
           const initialResp = {};
@@ -63,9 +64,11 @@ export const ExamTakePage = () => {
     startSession();
   }, [mockTestId, navigate]);
 
-  // Timer Countdown Effect
+  // Timer Countdown Effect (runs once per active attemptId; avoids recreating interval every second)
   useEffect(() => {
-    if (remainingSeconds <= 0 && !loading && session) {
+    if (loading || !session?.attemptId) return;
+
+    if (remainingSeconds <= 0) {
       handleAutoSubmit();
       return;
     }
@@ -81,10 +84,13 @@ export const ExamTakePage = () => {
       });
     }, 1000);
 
-    return () => clearInterval(timerRef.current);
-  }, [remainingSeconds, loading, session]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [loading, session?.attemptId]);
 
   const handleAutoSubmit = async () => {
+    if (submittedRef.current) return;
     warning('Time has expired! Submitting your exam automatically...');
     await executeSubmission();
   };
@@ -161,16 +167,22 @@ export const ExamTakePage = () => {
   };
 
   const executeSubmission = async () => {
-    if (submitting) return;
+    if (submittedRef.current || submitting) return;
+    submittedRef.current = true;
     setSubmitting(true);
+    if (timerRef.current) clearInterval(timerRef.current);
     try {
       const res = await examService.submitExam(session.attemptId);
       if (res.success) {
         success('Exam completed! Review your detailed scorecard.');
         navigate(`/student/mock-tests/result/${session.attemptId}`);
+      } else {
+        submittedRef.current = false;
+        setSubmitting(false);
       }
     } catch (err) {
       toastError(err.message || 'Submission failed');
+      submittedRef.current = false;
       setSubmitting(false);
     }
   };
@@ -212,9 +224,9 @@ export const ExamTakePage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Top Examination Status Bar */}
-      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <span className="text-[10px] font-extrabold text-[#1769D2] uppercase tracking-wider">
             Online Examination In Progress
@@ -225,18 +237,6 @@ export const ExamTakePage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          {session?.mockTest?.paperPdfUrl && (
-            <a
-              href={session.mockTest.paperPdfUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 bg-blue-50 hover:bg-blue-100 text-[#1769D2] text-xs font-bold rounded-2xl border border-blue-200 transition-colors shadow-xs"
-              title="Open the original question paper PDF in a new tab"
-            >
-              <FileText className="w-4 h-4 text-rose-600" /> Reference Paper PDF
-            </a>
-          )}
-
           {/* Timer Box */}
           <div className={`flex items-center gap-2.5 px-5 py-2.5 rounded-2xl font-black text-sm sm:text-base border shadow-inner ${
             remainingSeconds < 300
@@ -250,6 +250,7 @@ export const ExamTakePage = () => {
       </div>
 
       {/* Main Examination Layout */}
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left: Active Question Canvas */}
         <div className="lg:col-span-8 bg-white p-6 sm:p-8 rounded-3xl border border-slate-200 shadow-xs flex flex-col justify-between space-y-6 min-h-[500px]">
@@ -265,14 +266,29 @@ export const ExamTakePage = () => {
               </div>
 
               <div className="flex items-center gap-3">
-                <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">+{currentQuestion?.marks || 1} Mark</span>
-                <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded">-{currentQuestion?.negativeMarks || 0.25} Neg</span>
+                <span className="text-emerald-700 font-bold bg-emerald-50 px-2 py-0.5 rounded">+{currentQuestion?.marks ?? 1} Mark</span>
+                <span className="text-rose-600 font-bold bg-rose-50 px-2 py-0.5 rounded">
+                  {Number(currentQuestion?.negativeMarks ?? 0.25) > 0
+                    ? `-${currentQuestion?.negativeMarks ?? 0.25} Neg`
+                    : 'No Neg'}
+                </span>
               </div>
             </div>
 
-            {/* Question Text */}
-            <div className="text-base sm:text-lg font-bold text-[#17243A] leading-relaxed">
-              {currentQuestion?.questionText}
+            {/* Question Text & Optional Image */}
+            <div className="space-y-4">
+              <div className="text-base sm:text-lg font-bold text-[#17243A] leading-relaxed">
+                {currentQuestion?.questionText}
+              </div>
+              {currentQuestion?.questionImage && (
+                <div className="rounded-2xl overflow-hidden border border-slate-200 bg-slate-50 max-w-xl">
+                  <img
+                    src={currentQuestion.questionImage}
+                    alt={`Question ${currentIndex + 1} diagram`}
+                    className="max-h-72 w-auto object-contain mx-auto p-2"
+                  />
+                </div>
+              )}
             </div>
 
             {/* Options List */}
@@ -413,6 +429,7 @@ export const ExamTakePage = () => {
             </button>
           </div>
         </div>
+      </div>
       </div>
 
       {/* Submit Confirmation Modal */}

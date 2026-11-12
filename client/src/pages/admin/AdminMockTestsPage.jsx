@@ -51,6 +51,8 @@ export const AdminMockTestsPage = () => {
     paperPdfName: '',
     solutionPdfUrl: '',
     solutionPdfName: '',
+    maxAttempts: 0,
+    negativeMarkingEnabled: true,
   });
 
   const [uploadForm, setUploadForm] = useState({
@@ -117,6 +119,8 @@ export const AdminMockTestsPage = () => {
       paperPdfName: '',
       solutionPdfUrl: '',
       solutionPdfName: '',
+      maxAttempts: 0,
+      negativeMarkingEnabled: true,
     });
     setShowAddModal(true);
   };
@@ -160,6 +164,8 @@ export const AdminMockTestsPage = () => {
       paperPdfName: test.paperPdfName || '',
       solutionPdfUrl: test.solutionPdfUrl || '',
       solutionPdfName: test.solutionPdfName || '',
+      maxAttempts: test.maxAttempts !== undefined ? test.maxAttempts : 0,
+      negativeMarkingEnabled: test.negativeMarkingEnabled !== undefined ? test.negativeMarkingEnabled : true,
     });
     setShowAddModal(true);
   };
@@ -426,9 +432,9 @@ export const AdminMockTestsPage = () => {
   }, [tests, divisionFilter, searchQuery]);
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header Bar */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Mock Tests & 10–20 Model Papers
@@ -454,7 +460,7 @@ export const AdminMockTestsPage = () => {
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           {/* Division Filter */}
           <select
@@ -509,7 +515,8 @@ export const AdminMockTestsPage = () => {
       </div>
 
       {/* Tests Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -627,6 +634,7 @@ export const AdminMockTestsPage = () => {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {/* ========================================================================= */}
@@ -1013,6 +1021,30 @@ export const AdminMockTestsPage = () => {
                     }
                     className="w-full px-3 py-2 rounded-xl border border-slate-200"
                   />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Max Attempts (0 = Unlimited)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={testForm.maxAttempts}
+                    onChange={(e) => setTestForm({ ...testForm, maxAttempts: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div className="flex items-end pb-2">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-[#12356B]">
+                    <input
+                      type="checkbox"
+                      checked={testForm.negativeMarkingEnabled}
+                      onChange={(e) => setTestForm({ ...testForm, negativeMarkingEnabled: e.target.checked })}
+                      className="rounded text-[#1769D2]"
+                    />
+                    <span>Enable Negative Marking</span>
+                  </label>
                 </div>
               </div>
 

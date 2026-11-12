@@ -161,6 +161,19 @@ const toggleStudentStatus = async (req, res, next) => {
     student.isActive = !student.isActive;
     await student.save();
 
+    if (!student.isActive) {
+      await DeviceSession.updateMany(
+        { studentId: student._id, isActive: true },
+        {
+          isActive: false,
+          revokedAt: new Date(),
+          revokedBy: 'ADMIN_SUSPEND',
+          revokedReason: 'Account suspended by administration',
+        }
+      );
+      emitDeviceRevocation(student._id, 'Your account has been suspended by administration.');
+    }
+
     await AuditLog.create({
       userId: req.user._id,
       userEmail: req.user.email,
@@ -252,6 +265,82 @@ const triggerAuditLogCleanup = async (req, res, next) => {
   }
 };
 
+// Admin: Analytics & Reports Data
+const getReportsData = async (req, res, next) => {
+  try {
+    const Enrollment = require('../models/Enrollment');
+    const ExamAttempt = require('../models/ExamAttempt');
+
+    const now = new Date();
+    // Build 6-month date range
+    const months = [];
+    for (let i = 5; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({
+        year: d.getFullYear(),
+        month: d.getMonth() + 1,
+        label: d.toLocaleString('en-IN', { month: 'short', year: '2-digit' }),
+      });
+    }
+
+    const rangeStart = new Date(months[0].year, months[0].month - 1, 1);
+
+    // Monthly revenue from PAID orders
+    const revenueByMonth = await Order.aggregate([
+      { $match: { status: 'PAID', createdAt: { $gte: rangeStart } } },
+      { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, total: { $sum: '$amount' } } },
+    ]);
+
+    // Monthly enrollments
+    const enrollmentsByMonth = await Enrollment.aggregate([
+      { $match: { createdAt: { $gte: rangeStart } } },
+      { $group: { _id: { year: { $year: '$createdAt' }, month: { $month: '$createdAt' } }, count: { $sum: 1 } } },
+    ]);
+
+    // Division breakdown
+    const divisionBreakdown = await Enrollment.aggregate([
+      { $group: { _id: '$division', count: { $sum: 1 } } },
+    ]);
+
+    // Map months to chart data
+    const revenueMap = {};
+    revenueByMonth.forEach(r => { revenueMap[`${r._id.year}-${r._id.month}`] = r.total; });
+    const enrollMap = {};
+    enrollmentsByMonth.forEach(e => { enrollMap[`${e._id.year}-${e._id.month}`] = e.count; });
+
+    const monthlyRevenue = months.map(m => ({
+      label: m.label,
+      revenue: revenueMap[`${m.year}-${m.month}`] || 0,
+    }));
+    const monthlyEnrollments = months.map(m => ({
+      label: m.label,
+      enrollments: enrollMap[`${m.year}-${m.month}`] || 0,
+    }));
+
+    // Summary stats
+    const [totalRevenueAgg, totalEnrollments, activeStudents, totalExamAttempts] = await Promise.all([
+      Order.aggregate([{ $match: { status: 'PAID' } }, { $group: { _id: null, sum: { $sum: '$amount' } } }]),
+      Enrollment.countDocuments(),
+      User.countDocuments({ role: 'STUDENT', isActive: true }),
+      ExamAttempt.countDocuments({ status: 'SUBMITTED' }),
+    ]);
+
+    return sendSuccess(res, 'Reports data retrieved', {
+      monthlyRevenue,
+      monthlyEnrollments,
+      divisionBreakdown: divisionBreakdown.map(d => ({ name: d._id || 'Unknown', value: d.count })),
+      summary: {
+        totalRevenue: totalRevenueAgg[0]?.sum || 0,
+        totalEnrollments,
+        activeStudents,
+        totalExamAttempts,
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getDashboardStats,
   getStudents,
@@ -259,4 +348,5 @@ module.exports = {
   toggleStudentStatus,
   getAuditLogs,
   triggerAuditLogCleanup,
+  getReportsData,
 };

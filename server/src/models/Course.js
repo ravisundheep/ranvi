@@ -149,6 +149,12 @@ const CourseSchema = new mongoose.Schema({
   learningObjectives: [{ type: String }],
   faculty: [FacultyMemberSchema],
   features: [{ type: String }],
+  subscriptionPlans: [{
+    durationMonths: { type: Number, required: true }, // 3, 6, or 12
+    price: { type: Number, required: true },
+    originalPrice: { type: Number },
+    label: { type: String }, // e.g. "3 Months", "6 Months", "1 Year"
+  }],
   faqs: [{
     question: { type: String, required: true },
     answer: { type: String, required: true },

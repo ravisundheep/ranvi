@@ -28,6 +28,7 @@ const ContactPage = lazy(() => import('./pages/public/ContactPage').then((m) => 
 const EnquiryDemoPage = lazy(() => import('./pages/public/EnquiryDemoPage').then((m) => ({ default: m.EnquiryDemoPage })));
 const LoginPage = lazy(() => import('./pages/public/LoginPage').then((m) => ({ default: m.LoginPage })));
 const RegisterPage = lazy(() => import('./pages/public/RegisterPage').then((m) => ({ default: m.RegisterPage })));
+const ForgotPasswordPage = lazy(() => import('./pages/public/ForgotPasswordPage').then((m) => ({ default: m.ForgotPasswordPage })));
 const CheckoutPage = lazy(() => import('./pages/public/CheckoutPage').then((m) => ({ default: m.CheckoutPage })));
 const NotificationsPage = lazy(() => import('./pages/public/NotificationsPage').then((m) => ({ default: m.NotificationsPage })));
 const TuitionProgramsPage = lazy(() => import('./pages/public/TuitionProgramsPage').then((m) => ({ default: m.TuitionProgramsPage })));
@@ -53,6 +54,7 @@ const StudentProfilePage = lazy(() => import('./pages/student/StudentProfilePage
 const AvailableProgramsPage = lazy(() => import('./pages/student/AvailableProgramsPage').then((m) => ({ default: m.AvailableProgramsPage })));
 const MyEnrollmentsPage = lazy(() => import('./pages/student/MyEnrollmentsPage').then((m) => ({ default: m.MyEnrollmentsPage })));
 const MyProgramsPage = lazy(() => import('./pages/student/MyProgramsPage').then((m) => ({ default: m.MyProgramsPage })));
+const StudentWalletPage = lazy(() => import('./pages/student/StudentWalletPage').then((m) => ({ default: m.StudentWalletPage })));
 
 // Lazy-loaded Admin Management Pages
 const AdminDashboardPage = lazy(() => import('./pages/admin/AdminDashboardPage').then((m) => ({ default: m.AdminDashboardPage })));
@@ -73,6 +75,10 @@ const AdminLatestUpdatesPage = lazy(() => import('./pages/admin/AdminLatestUpdat
 const AdminNotificationsPage = lazy(() => import('./pages/admin/AdminNotificationsPage').then((m) => ({ default: m.AdminNotificationsPage })));
 const AdminTuitionProgramsPage = lazy(() => import('./pages/admin/AdminTuitionProgramsPage').then((m) => ({ default: m.AdminTuitionProgramsPage })));
 const AdminEnrollmentsPage = lazy(() => import('./pages/admin/AdminEnrollmentsPage').then((m) => ({ default: m.AdminEnrollmentsPage })));
+const AdminStaffPage = lazy(() => import('./pages/admin/AdminStaffPage').then((m) => ({ default: m.AdminStaffPage })));
+const AdminApprovalsPage = lazy(() => import('./pages/admin/AdminApprovalsPage').then((m) => ({ default: m.AdminApprovalsPage })));
+const AdminReportsPage = lazy(() => import('./pages/admin/AdminReportsPage').then((m) => ({ default: m.AdminReportsPage })));
+const AdminPayoutsPage = lazy(() => import('./pages/admin/AdminPayoutsPage').then((m) => ({ default: m.AdminPayoutsPage })));
 
 const RouteLoadingSpinner = () => (
   <div className="min-h-screen flex flex-col items-center justify-center bg-[#F8FAFC]">
@@ -89,12 +95,22 @@ const ProtectedStudentRoute = ({ children }) => {
   return children;
 };
 
-const ProtectedAdminRoute = ({ children }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+const ProtectedPortalRoute = ({ children, allowedRoles }) => {
+  const { isAuthenticated, isStaff, hasRole, loading } = useAuth();
   if (loading) return <RouteLoadingSpinner />;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
-  if (!isAdmin) return <Navigate to="/student/dashboard" replace />;
+  if (!isStaff) return <Navigate to="/student/dashboard" replace />;
+  if (allowedRoles && allowedRoles.length > 0 && !hasRole(...allowedRoles)) {
+    return <Navigate to="/admin/dashboard" replace />;
+  }
   return children;
+};
+
+const FacultyRedirect = () => {
+  const { isAuthenticated, isStaff, loading } = useAuth();
+  if (loading) return <RouteLoadingSpinner />;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <Navigate to={isStaff ? '/admin/dashboard' : '/student/dashboard'} replace />;
 };
 
 export function App() {
@@ -124,6 +140,7 @@ export function App() {
                   <Route path="/enquiry" element={<EnquiryDemoPage />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/register" element={<RegisterPage />} />
+                  <Route path="/forgot-password" element={<ForgotPasswordPage />} />
                   <Route path="/checkout" element={<CheckoutPage />} />
                   <Route path="/notifications" element={<NotificationsPage />} />
                   <Route path="/tuition-programs" element={<TuitionProgramsPage />} />
@@ -157,41 +174,46 @@ export function App() {
                   <Route path="mock-tests/:mockTestId/take" element={<ExamTakePage />} />
                   <Route path="mock-tests/result/:attemptId" element={<ExamResultPage />} />
                   <Route path="payments" element={<StudentPaymentsPage />} />
+                  <Route path="wallet" element={<StudentWalletPage />} />
                   <Route path="profile" element={<StudentProfilePage />} />
                 </Route>
 
-                {/* Legacy Faculty Route Redirect */}
-                <Route path="/faculty/dashboard" element={<Navigate to="/student/dashboard" replace />} />
+                {/* Faculty Route Redirect */}
+                <Route path="/faculty/dashboard" element={<FacultyRedirect />} />
 
-                {/* Admin Management Portal */}
+                {/* Multi-Role Staff & Admin Management Portal */}
                 <Route
                   path="/admin"
                   element={
-                    <ProtectedAdminRoute>
+                    <ProtectedPortalRoute>
                       <AdminLayout />
-                    </ProtectedAdminRoute>
+                    </ProtectedPortalRoute>
                   }
                 >
                   <Route index element={<Navigate to="/admin/dashboard" replace />} />
                   <Route path="dashboard" element={<AdminDashboardPage />} />
-                  <Route path="courses" element={<AdminCoursesPage />} />
-                  <Route path="courses/new" element={<AdminCourseFormPage />} />
-                  <Route path="courses/:courseId/edit" element={<AdminCourseFormPage />} />
-                  <Route path="entrance-exams" element={<AdminEntranceExamsPage />} />
-                  <Route path="faculty" element={<AdminFacultyPage />} />
-                  <Route path="lessons" element={<AdminLessonsPage />} />
-                  <Route path="live-classes" element={<AdminLiveClassesPage />} />
-                  <Route path="mock-tests" element={<AdminMockTestsPage />} />
-                  <Route path="mock-tests/:mockTestId/questions" element={<AdminQuestionsPage />} />
-                  <Route path="students" element={<AdminStudentsPage />} />
-                  <Route path="payments" element={<AdminPaymentsPage />} />
-                  <Route path="enquiries" element={<AdminEnquiriesPage />} />
-                  <Route path="settings" element={<AdminSettingsPage />} />
-                  <Route path="audit-logs" element={<AdminAuditLogsPage />} />
-                  <Route path="updates" element={<AdminLatestUpdatesPage />} />
-                  <Route path="notifications" element={<AdminNotificationsPage />} />
-                  <Route path="tuitions" element={<AdminTuitionProgramsPage />} />
-                  <Route path="enrollments" element={<AdminEnrollmentsPage />} />
+                  <Route path="staff" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminStaffPage /></ProtectedPortalRoute>} />
+                  <Route path="approvals" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminApprovalsPage /></ProtectedPortalRoute>} />
+                  <Route path="courses" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCoursesPage /></ProtectedPortalRoute>} />
+                  <Route path="courses/new" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCourseFormPage /></ProtectedPortalRoute>} />
+                  <Route path="courses/:courseId/edit" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCourseFormPage /></ProtectedPortalRoute>} />
+                  <Route path="entrance-exams" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminEntranceExamsPage /></ProtectedPortalRoute>} />
+                  <Route path="faculty" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminFacultyPage /></ProtectedPortalRoute>} />
+                  <Route path="lessons" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FACULTY']}><AdminLessonsPage /></ProtectedPortalRoute>} />
+                  <Route path="live-classes" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FACULTY', 'SUPPORT_STAFF']}><AdminLiveClassesPage /></ProtectedPortalRoute>} />
+                  <Route path="mock-tests" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FACULTY']}><AdminMockTestsPage /></ProtectedPortalRoute>} />
+                  <Route path="mock-tests/:mockTestId/questions" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FACULTY']}><AdminQuestionsPage /></ProtectedPortalRoute>} />
+                  <Route path="students" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'SUPPORT_STAFF']}><AdminStudentsPage /></ProtectedPortalRoute>} />
+                  <Route path="payments" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminPaymentsPage /></ProtectedPortalRoute>} />
+                  <Route path="payouts" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminPayoutsPage /></ProtectedPortalRoute>} />
+                  <Route path="reports" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminReportsPage /></ProtectedPortalRoute>} />
+                  <Route path="enquiries" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'SUPPORT_STAFF']}><AdminEnquiriesPage /></ProtectedPortalRoute>} />
+                  <Route path="settings" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminSettingsPage /></ProtectedPortalRoute>} />
+                  <Route path="audit-logs" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminAuditLogsPage /></ProtectedPortalRoute>} />
+                  <Route path="updates" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminLatestUpdatesPage /></ProtectedPortalRoute>} />
+                  <Route path="notifications" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'SUPPORT_STAFF']}><AdminNotificationsPage /></ProtectedPortalRoute>} />
+                  <Route path="tuitions" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminTuitionProgramsPage /></ProtectedPortalRoute>} />
+                  <Route path="enrollments" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'SUPPORT_STAFF', 'FINANCE_STAFF']}><AdminEnrollmentsPage /></ProtectedPortalRoute>} />
                 </Route>
               </Routes>
             </Suspense>

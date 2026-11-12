@@ -28,6 +28,55 @@ const LatestUpdateSchema = new mongoose.Schema(
       trim: true,
       default: 'Latest Update',
     },
+    isJobAlert: {
+      type: Boolean,
+      default: false,
+    },
+    category: {
+      type: String,
+      enum: ['BANKING', 'CENTRAL_GOVT', 'STATE_GOVT', 'INSURANCE', 'RAILWAYS', 'DEFENSE', 'TEACHING', 'GENERAL'],
+      default: 'GENERAL',
+    },
+    organization: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    postName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    vacancies: {
+      type: Number,
+      default: 0,
+    },
+    qualification: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    ageLimit: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    applicationStartDate: {
+      type: Date,
+    },
+    applicationEndDate: {
+      type: Date,
+    },
+    applyOnlineUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    officialNotificationPdfUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     publishedAt: {
       type: Date,
       default: Date.now,

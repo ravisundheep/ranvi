@@ -19,6 +19,7 @@ import {
 
 const NOTIFICATION_TYPES = [
   { id: 'ALL', label: 'All Notifications' },
+  { id: 'JOB_ALERT', label: 'Govt & Bank Job Alerts' },
   { id: 'EXAM_ALERT', label: 'Exam Alerts' },
   { id: 'ADMISSION', label: 'Admissions' },
   { id: 'ANNOUNCEMENT', label: 'Announcements' },
@@ -34,13 +35,14 @@ export const NotificationsPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedNotification, setSelectedNotification] = useState(null);
 
-  const fetchNotifications = async () => {
+  const fetchNotifications = async (overrideSearch) => {
     try {
       setLoading(true);
       setError(null);
+      const q = overrideSearch !== undefined ? overrideSearch : searchQuery;
       const params = { limit: 50 };
       if (activeType !== 'ALL') params.type = activeType;
-      if (searchQuery.trim()) params.search = searchQuery.trim();
+      if (q && q.trim()) params.search = q.trim();
 
       const res = await publicNotificationService.getPublicNotifications(params);
       if (res && res.success) {
@@ -50,24 +52,8 @@ export const NotificationsPage = () => {
         setNotifications([]);
       }
     } catch (err) {
-      setNotifications([
-        {
-          _id: 'default-notif-1',
-          title: 'JAIIB & CAIIB 2026 Batch Admissions Open',
-          description: 'Official registration for upcoming JAIIB & CAIIB master batches is currently underway with morning & evening slots.',
-          type: 'ADMISSION',
-          isPinned: true,
-          publishedAt: new Date().toISOString(),
-        },
-        {
-          _id: 'default-notif-2',
-          title: 'IBPS PO Prelims 2026 Mock Test Series Activated',
-          description: 'Full syllabus mock tests with sectional timings and detailed analytics are now accessible in the student portal.',
-          type: 'EXAM_ALERT',
-          isPinned: true,
-          publishedAt: new Date().toISOString(),
-        },
-      ]);
+      setNotifications([]);
+      setError(err?.message || 'Unable to load notifications. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -84,11 +70,13 @@ export const NotificationsPage = () => {
 
   const handleClearSearch = () => {
     setSearchQuery('');
-    setTimeout(fetchNotifications, 50);
+    fetchNotifications('');
   };
 
   const getTypeBadge = (type) => {
     switch (type) {
+      case 'JOB_ALERT':
+        return { label: 'Govt / Bank Job Alert', bg: 'bg-purple-50 text-purple-700 border-purple-200' };
       case 'EXAM_ALERT':
         return { label: 'Exam Alert', bg: 'bg-red-50 text-red-700 border-red-200' };
       case 'ADMISSION':
@@ -247,7 +235,18 @@ export const NotificationsPage = () => {
                           <Calendar className="w-3 h-3" />
                           {formatDate(item.publishedAt || item.createdAt)}
                         </span>
-                        {item.expiresAt && (
+                        {item.type === 'JOB_ALERT' && (item.applicationEndDate || item.expiresAt) && (
+                          new Date(item.applicationEndDate || item.expiresAt) < new Date() ? (
+                            <span className="bg-rose-100 text-rose-700 border border-rose-200 text-[10.5px] px-2 py-0.5 rounded-full font-black">
+                              Expired / Closed
+                            </span>
+                          ) : (
+                            <span className="text-amber-700 bg-amber-50 border border-amber-200 text-[10.5px] px-2 py-0.5 rounded-full font-bold flex items-center gap-1">
+                              <Clock className="w-3 h-3" /> Closes: {formatDate(item.applicationEndDate || item.expiresAt)}
+                            </span>
+                          )
+                        )}
+                        {item.type !== 'JOB_ALERT' && item.expiresAt && (
                           <span className="text-amber-600 text-[11px] flex items-center gap-1 font-medium">
                             <Clock className="w-3 h-3" /> Valid until: {formatDate(item.expiresAt)}
                           </span>
@@ -261,6 +260,32 @@ export const NotificationsPage = () => {
                       >
                         {item.title}
                       </h3>
+
+                      {/* Job Alert Meta Row */}
+                      {item.type === 'JOB_ALERT' && (
+                        <div className="flex flex-wrap items-center gap-2 pt-0.5 text-xs">
+                          {item.organization && (
+                            <span className="bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-md text-[11px]">
+                              🏢 {item.organization}
+                            </span>
+                          )}
+                          {item.postName && (
+                            <span className="bg-blue-50 text-blue-800 font-semibold px-2 py-0.5 rounded-md text-[11px]">
+                              📌 {item.postName}
+                            </span>
+                          )}
+                          {Number(item.vacancies) > 0 && (
+                            <span className="bg-emerald-50 text-emerald-800 font-bold px-2 py-0.5 rounded-md text-[11px]">
+                              👥 {item.vacancies} Vacancies
+                            </span>
+                          )}
+                          {item.qualification && (
+                            <span className="text-slate-500 text-[11px]">
+                              🎓 {item.qualification}
+                            </span>
+                          )}
+                        </div>
+                      )}
 
                       {/* Snippet */}
                       <p className="text-xs sm:text-sm text-slate-600 leading-relaxed line-clamp-2">
@@ -277,26 +302,26 @@ export const NotificationsPage = () => {
                       >
                         Read Details
                       </button>
-                      {item.link && (
+                      {(item.applyOnlineUrl || item.link) && (
                         <a
-                          href={item.link}
+                          href={item.applyOnlineUrl || item.link}
                           target="_blank"
                           rel="noreferrer"
-                          className="text-xs font-bold text-slate-600 hover:text-[#0B2545] inline-flex items-center gap-1 px-2.5 py-1.5"
+                          className="text-xs font-bold text-white bg-[#0B2545] hover:bg-[#12356B] inline-flex items-center gap-1 px-3 py-1.5 rounded-lg transition-colors"
                         >
-                          <span>Visit Link</span>
+                          <span>{item.type === 'JOB_ALERT' ? 'Apply Online' : 'Visit Link'}</span>
                           <ExternalLink className="w-3 h-3" />
                         </a>
                       )}
-                      {item.attachment && (
+                      {(item.officialNotificationPdfUrl || item.attachment) && (
                         <a
-                          href={item.attachment}
+                          href={item.officialNotificationPdfUrl || item.attachment}
                           target="_blank"
                           rel="noreferrer"
                           className="text-xs font-bold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg inline-flex items-center gap-1"
                         >
                           <FileText className="w-3 h-3" />
-                          <span>PDF / Doc</span>
+                          <span>{item.type === 'JOB_ALERT' ? 'Official Notification' : 'PDF / Doc'}</span>
                         </a>
                       )}
                     </div>
@@ -341,32 +366,83 @@ export const NotificationsPage = () => {
               </h2>
             </div>
 
+            {selectedNotification.type === 'JOB_ALERT' && (
+              <div className="bg-blue-50/50 rounded-2xl p-4 border border-blue-100 text-xs space-y-2.5">
+                <div className="grid grid-cols-2 gap-2 text-slate-700">
+                  {selectedNotification.organization && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Organization</span>
+                      <span className="font-bold text-slate-900">{selectedNotification.organization}</span>
+                    </div>
+                  )}
+                  {selectedNotification.postName && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Post / Role</span>
+                      <span className="font-bold text-blue-900">{selectedNotification.postName}</span>
+                    </div>
+                  )}
+                  {Number(selectedNotification.vacancies) > 0 && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Total Vacancies</span>
+                      <span className="font-bold text-emerald-700">{selectedNotification.vacancies} Positions</span>
+                    </div>
+                  )}
+                  {selectedNotification.qualification && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Qualification</span>
+                      <span className="font-semibold">{selectedNotification.qualification}</span>
+                    </div>
+                  )}
+                  {selectedNotification.ageLimit && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Age Limit</span>
+                      <span className="font-semibold">{selectedNotification.ageLimit}</span>
+                    </div>
+                  )}
+                  {(selectedNotification.applicationEndDate || selectedNotification.expiresAt) && (
+                    <div>
+                      <span className="font-bold text-slate-500 block text-[10.5px]">Application Status</span>
+                      <span className={`font-black ${
+                        new Date(selectedNotification.applicationEndDate || selectedNotification.expiresAt) < new Date()
+                          ? 'text-rose-600'
+                          : 'text-emerald-700'
+                      }`}>
+                        {new Date(selectedNotification.applicationEndDate || selectedNotification.expiresAt) < new Date()
+                          ? 'Expired / Closed'
+                          : `Active (Closes: ${formatDate(selectedNotification.applicationEndDate || selectedNotification.expiresAt)})`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 text-slate-700 text-sm leading-relaxed whitespace-pre-line max-h-72 overflow-y-auto">
               {selectedNotification.description || selectedNotification.message}
             </div>
 
             <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
-              <div className="flex items-center gap-2">
-                {selectedNotification.link && (
+              <div className="flex flex-wrap items-center gap-2">
+                {(selectedNotification.applyOnlineUrl || selectedNotification.link) && (
                   <a
-                    href={selectedNotification.link}
+                    href={selectedNotification.applyOnlineUrl || selectedNotification.link}
                     target="_blank"
                     rel="noreferrer"
                     className="bg-[#0B2545] hover:bg-[#12356B] text-white text-xs font-bold px-4 py-2 rounded-xl inline-flex items-center gap-1.5 transition-colors"
                   >
-                    <span>Open Official Link</span>
+                    <span>{selectedNotification.type === 'JOB_ALERT' ? 'Apply Online (Official Portal)' : 'Open Official Link'}</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </a>
                 )}
-                {selectedNotification.attachment && (
+                {(selectedNotification.officialNotificationPdfUrl || selectedNotification.attachment) && (
                   <a
-                    href={selectedNotification.attachment}
+                    href={selectedNotification.officialNotificationPdfUrl || selectedNotification.attachment}
                     target="_blank"
                     rel="noreferrer"
                     className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl inline-flex items-center gap-1.5 transition-colors"
                   >
                     <FileText className="w-3.5 h-3.5" />
-                    <span>Download Attachment</span>
+                    <span>{selectedNotification.type === 'JOB_ALERT' ? 'Official Notification (PDF)' : 'Download Attachment'}</span>
                   </a>
                 )}
               </div>

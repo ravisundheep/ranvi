@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { courseService } from '../../services';
+import { courseService, tuitionService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import {
   GraduationCap,
@@ -52,7 +52,8 @@ export const AdminTuitionProgramsPage = () => {
       setLoading(true);
       const res = await courseService.getCourses({
         division: 'TUITIONS',
-        limit: 50,
+        includeUnpublished: 'true',
+        limit: 100,
       });
       if (res?.success && res.data) {
         let list = Array.isArray(res.data.courses) ? res.data.courses : res.data;
@@ -106,10 +107,10 @@ export const AdminTuitionProgramsPage = () => {
       title: p.title || '',
       subject: p.subject || '',
       shortDescription: p.shortDescription || '',
-      description: p.description || '',
+      description: p.fullDescription || p.description || p.shortDescription || '',
       mode: p.mode || 'BOTH',
-      price: p.price ?? 0,
-      originalPrice: p.originalPrice ?? p.price ?? 0,
+      price: p.price ?? p.fee ?? 0,
+      originalPrice: p.originalPrice ?? p.price ?? p.fee ?? 0,
       totalSeats: p.totalSeats ?? 30,
       availableSeats: p.availableSeats ?? p.totalSeats ?? 30,
       isEnrollmentOpen: p.isEnrollmentOpen !== false,
@@ -133,17 +134,22 @@ export const AdminTuitionProgramsPage = () => {
 
     try {
       setSaving(true);
+      const numericFee = Number(formData.price ?? 0);
       const payload = {
         ...formData,
+        fee: numericFee,
+        price: numericFee,
+        originalPrice: Number(formData.originalPrice ?? numericFee),
+        shortDescription: formData.shortDescription?.trim() || formData.description?.trim() || formData.title.trim(),
+        fullDescription: formData.description?.trim() || formData.shortDescription?.trim() || formData.title.trim(),
         division: 'TUITIONS',
-        category: 'TUITIONS',
       };
 
       if (editingProgram) {
-        const res = await courseService.updateCourse(editingProgram._id, payload);
+        const res = await tuitionService.updateTuitionProgram(editingProgram._id, payload);
         if (res?.success) success('Tuition program updated successfully');
       } else {
-        const res = await courseService.createCourse(payload);
+        const res = await tuitionService.createTuitionProgram(payload);
         if (res?.success) success('New tuition program created successfully');
       }
       setModalOpen(false);
@@ -159,7 +165,7 @@ export const AdminTuitionProgramsPage = () => {
   const handleToggleEnrollment = async (p) => {
     try {
       const updatedStatus = !p.isEnrollmentOpen;
-      const res = await courseService.updateCourse(p._id, { isEnrollmentOpen: updatedStatus });
+      const res = await tuitionService.updateTuitionProgram(p._id, { isEnrollmentOpen: updatedStatus });
       if (res?.success) {
         success(`Enrollment ${updatedStatus ? 'Opened' : 'Closed'} for ${p.title}`);
         fetchPrograms();
@@ -173,7 +179,7 @@ export const AdminTuitionProgramsPage = () => {
   const handleDelete = async (id, title) => {
     if (!window.confirm(`Delete tuition program: "${title}"?`)) return;
     try {
-      const res = await courseService.deleteCourse(id);
+      const res = await tuitionService.deleteTuitionProgram(id);
       if (res?.success) {
         success('Program deleted successfully');
         fetchPrograms();
@@ -184,9 +190,9 @@ export const AdminTuitionProgramsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
             Tuition & Coaching Programs Management
@@ -206,7 +212,7 @@ export const AdminTuitionProgramsPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -237,7 +243,8 @@ export const AdminTuitionProgramsPage = () => {
       </div>
 
       {/* Table */}
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading tuition programs...</p>
@@ -338,6 +345,7 @@ export const AdminTuitionProgramsPage = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Modal for Program Create / Edit */}
       {modalOpen && (

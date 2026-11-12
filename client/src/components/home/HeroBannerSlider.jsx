@@ -158,10 +158,13 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
   const [extendedIndex, setExtendedIndex] = useState(1);
   const [isTransitionEnabled, setIsTransitionEnabled] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
+  const extendedIndexRef = useRef(1);
   const touchStartXRef = useRef(0);
   const touchDeltaXRef = useRef(0);
   const autoPlayTimerRef = useRef(null);
   const sliderTrackRef = useRef(null);
+
+  extendedIndexRef.current = extendedIndex;
 
   // Real index (0, 1, or 2) for indicator dots - mathematically safe modulo
   const realIndex = ((extendedIndex - 1) % count + count) % count;
@@ -169,31 +172,33 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
   // Clamped safe index for transform to guarantee track never scrolls into void
   const safeIndex = Math.min(Math.max(extendedIndex, 0), extendedSlides.length - 1);
 
-  // Handle advancing next with strict boundary guard
-  const handleNext = useCallback(() => {
-    setExtendedIndex((prev) => {
-      // If already at or beyond the end clone, snap to slide 1 first, then advance
-      if (prev >= count + 1) {
-        setIsTransitionEnabled(false);
-        return 2;
-      }
-      setIsTransitionEnabled(true);
-      return prev + 1;
-    });
-  }, [count]);
+  // Snap instantaneously without calling state setters inside another setter updater
+  const snapToIndex = useCallback((targetIdx) => {
+    setIsTransitionEnabled(false);
+    setExtendedIndex(targetIdx);
+  }, []);
 
-  // Handle going prev with strict boundary guard
+  // Handle advancing next cleanly
+  const handleNext = useCallback(() => {
+    const curr = extendedIndexRef.current;
+    if (curr >= count + 1) {
+      snapToIndex(1);
+      return;
+    }
+    setIsTransitionEnabled(true);
+    setExtendedIndex(curr + 1);
+  }, [count, snapToIndex]);
+
+  // Handle going prev cleanly
   const handlePrev = useCallback(() => {
-    setExtendedIndex((prev) => {
-      // If already at or below the start clone, snap to slide count, then go backwards
-      if (prev <= 0) {
-        setIsTransitionEnabled(false);
-        return count - 1;
-      }
-      setIsTransitionEnabled(true);
-      return prev - 1;
-    });
-  }, [count]);
+    const curr = extendedIndexRef.current;
+    if (curr <= 0) {
+      snapToIndex(count);
+      return;
+    }
+    setIsTransitionEnabled(true);
+    setExtendedIndex(curr - 1);
+  }, [count, snapToIndex]);
 
   // Jump to specific slide from dots
   const handleDotClick = (targetRealIdx) => {
@@ -207,15 +212,21 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
     if (e && e.target !== sliderTrackRef.current) return;
 
     if (extendedIndex >= count + 1) {
-      // Reached the clone of Slide 0 -> instantly snap to real Slide 0 (index 1) without animation
-      setIsTransitionEnabled(false);
-      setExtendedIndex(1);
+      snapToIndex(1);
     } else if (extendedIndex <= 0) {
-      // Reached the clone of Slide 2 -> instantly snap to real Slide 2 (index count) without animation
-      setIsTransitionEnabled(false);
-      setExtendedIndex(count);
+      snapToIndex(count);
     }
   };
+
+  // Fallback timer in case onTransitionEnd is skipped (reduced-motion, rapid navigation, or background throttling)
+  useEffect(() => {
+    if (extendedIndex >= count + 1 || extendedIndex <= 0) {
+      const wrapTimer = setTimeout(() => {
+        snapToIndex(extendedIndex >= count + 1 ? 1 : count);
+      }, 750);
+      return () => clearTimeout(wrapTimer);
+    }
+  }, [extendedIndex, count, snapToIndex]);
 
   // Re-enable transition smoothly after an instant snap using double-rAF
   useEffect(() => {
@@ -243,21 +254,17 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
       if (document.hidden) {
         setIsPaused(true);
       } else {
-        // When user returns to tab, ensure index is not desynced
-        setExtendedIndex((curr) => {
-          if (curr < 1 || curr > count) {
-            setIsTransitionEnabled(false);
-            return 1;
-          }
-          return curr;
-        });
+        const curr = extendedIndexRef.current;
+        if (curr < 1 || curr > count) {
+          snapToIndex(1);
+        }
         setIsPaused(false);
       }
     };
 
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [count]);
+  }, [count, snapToIndex]);
 
   // Auto-play infinite scroll timer
   useEffect(() => {
@@ -307,7 +314,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
       onTouchEnd={handleTouchEnd}
       aria-label="Hero Highlights Banner Slider"
     >
-      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl shadow-lg border border-slate-200/40 bg-slate-900 group">
+      <div className="relative overflow-hidden rounded-xl sm:rounded-xl shadow-lg border border-slate-200/40 group">
         {/* Infinite Sliding Reel */}
         <div
           ref={sliderTrackRef}
@@ -329,7 +336,7 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
             >
               <Link
                 to={slide.link}
-                className={`block rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 text-white bg-gradient-to-r ${slide.gradient} relative overflow-hidden flex items-center justify-between gap-3 sm:gap-4 cursor-pointer focus:outline-hidden min-h-[125px] sm:min-h-[145px] md:min-h-[160px]`}
+                className={`flex rounded-2xl sm:rounded-3xl p-4 sm:p-6 md:p-7 text-white bg-gradient-to-r ${slide.gradient} relative overflow-hidden items-center justify-between gap-3 sm:gap-4 cursor-pointer focus:outline-hidden min-h-[125px] sm:min-h-[145px] md:min-h-[160px]`}
               >
                 {/* Ambient glow in bottom-right corner */}
                 <div
@@ -368,51 +375,6 @@ export const HeroBannerSlider = ({ autoPlayInterval = 3800 }) => {
                 </div>
               </Link>
             </div>
-          ))}
-        </div>
-
-        {/* Prev & Next Navigation Chevrons (Hover/Tap visible) */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handlePrev();
-          }}
-          className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/25 hover:bg-black/50 text-white backdrop-blur-xs flex items-center justify-center opacity-75 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md focus:outline-hidden"
-          aria-label="Previous Slide"
-        >
-          <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        </button>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            handleNext();
-          }}
-          className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-black/25 hover:bg-black/50 text-white backdrop-blur-xs flex items-center justify-center opacity-75 sm:opacity-0 group-hover:opacity-100 transition-all duration-200 hover:scale-105 active:scale-95 shadow-md focus:outline-hidden"
-          aria-label="Next Slide"
-        >
-          <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        </button>
-
-        {/* Pagination Dots (Bottom-Center) */}
-        <div className="absolute bottom-2.5 sm:bottom-3 left-1/2 -translate-x-1/2 z-20 flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/20 backdrop-blur-xs">
-          {slides.map((s, idx) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleDotClick(idx);
-              }}
-              className={`transition-all duration-300 rounded-full focus:outline-hidden ${
-                realIndex === idx
-                  ? 'w-6 h-1.5 bg-white shadow-xs'
-                  : 'w-2 h-1.5 bg-white/40 hover:bg-white/80'
-              }`}
-              aria-label={`Go to slide ${idx + 1}: ${s.title}`}
-            />
           ))}
         </div>
       </div>

@@ -14,87 +14,53 @@ import {
   BookOpen,
 } from 'lucide-react';
 
-const DEFAULT_FALLBACK_PROGRAMS = [
-  {
-    _id: 'default-prog-1',
-    title: 'Class 10 Board Exam Target Batch (CBSE / State)',
-    slug: 'class-10-board-exam-target-batch',
-    division: 'TUITIONS',
-    mode: 'BOTH',
-    price: 3499,
-    originalPrice: 4999,
-    availableSeats: 18,
-    totalSeats: 30,
-    duration: 'Full Academic Year',
-    shortDescription: 'Comprehensive mathematics, science & English board coaching with daily practice problem sheets.',
-  },
-  {
-    _id: 'default-prog-2',
-    title: 'Intermediate 1st & 2nd Year (MPC / BiPC)',
-    slug: 'intermediate-1st-2nd-year-mpc-bipc',
-    division: 'TUITIONS',
-    mode: 'BOTH',
-    price: 4999,
-    originalPrice: 6999,
-    availableSeats: 12,
-    totalSeats: 35,
-    duration: 'Academic Term (10 Months)',
-    shortDescription: 'In-depth conceptual lectures, IPE formula sheets, and integrated weekend entrance orientation.',
-  },
-  {
-    _id: 'default-prog-3',
-    title: 'Degree Tuitions (B.Sc / B.Com / BBA Coaching)',
-    slug: 'degree-tuitions-bsc-bcom-bba-coaching',
-    division: 'TUITIONS',
-    mode: 'ONLINE',
-    price: 3999,
-    originalPrice: 5999,
-    availableSeats: 25,
-    totalSeats: 40,
-    duration: 'Semester Intensive',
-    shortDescription: 'Expert faculty coaching for financial accounting, corporate math, business statistics & computers.',
-  },
-];
-
 export const AvailableProgramsPage = () => {
   const [programs, setPrograms] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [search, setSearch] = useState('');
   const [selectedMode, setSelectedMode] = useState('ALL');
 
+  const loadPrograms = async (isMountedCheck = () => true) => {
+    try {
+      setLoading(true);
+      setLoadError('');
+      const fetchFn = tuitionService.getPublishedPrograms || tuitionService.getTuitionPrograms;
+      const res = await fetchFn({
+        search: search || undefined,
+        mode: selectedMode !== 'ALL' ? selectedMode : undefined,
+        limit: 50,
+      });
+      if (!isMountedCheck()) return;
+      if (res?.success && res.data) {
+        const list = res.data.courses || res.data;
+        setPrograms(Array.isArray(list) ? list : []);
+      } else {
+        setPrograms([]);
+        setLoadError(res?.message || 'Unable to load tuition programs.');
+      }
+    } catch (err) {
+      if (isMountedCheck()) {
+        setPrograms([]);
+        setLoadError(err?.message || 'Unable to load tuition programs. Please try again.');
+      }
+    } finally {
+      if (isMountedCheck()) setLoading(false);
+    }
+  };
+
   useEffect(() => {
     let isMounted = true;
-    const fetchPrograms = async () => {
-      try {
-        setLoading(true);
-        const fetchFn = tuitionService.getPublishedPrograms || tuitionService.getTuitionPrograms;
-        const res = await fetchFn({
-          search: search || undefined,
-          mode: selectedMode !== 'ALL' ? selectedMode : undefined,
-          limit: 30,
-        });
-        if (isMounted && res?.success && res.data) {
-          const list = res.data.courses || res.data;
-          setPrograms(Array.isArray(list) && list.length > 0 ? list : DEFAULT_FALLBACK_PROGRAMS);
-        } else if (isMounted) {
-          setPrograms(DEFAULT_FALLBACK_PROGRAMS);
-        }
-      } catch (err) {
-        if (isMounted) setPrograms(DEFAULT_FALLBACK_PROGRAMS);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
-    fetchPrograms();
+    loadPrograms(() => isMounted);
     return () => {
       isMounted = false;
     };
   }, [search, selectedMode]);
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif">
             Available Tuition & Coaching Programs
@@ -106,7 +72,7 @@ export const AvailableProgramsPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -137,10 +103,23 @@ export const AvailableProgramsPage = () => {
       </div>
 
       {/* Program Cards Grid */}
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading tuition programs...</p>
+        </div>
+      ) : loadError ? (
+        <div className="bg-rose-50 p-10 text-center rounded-2xl border border-rose-200 space-y-3">
+          <GraduationCap className="w-10 h-10 text-rose-400 mx-auto" />
+          <h3 className="text-base font-bold text-rose-800">{loadError}</h3>
+          <button
+            type="button"
+            onClick={() => loadPrograms()}
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold cursor-pointer"
+          >
+            Retry
+          </button>
         </div>
       ) : programs.length === 0 ? (
         <div className="bg-white p-12 text-center rounded-2xl border border-slate-200">
@@ -235,6 +214,7 @@ export const AvailableProgramsPage = () => {
           })}
         </div>
       )}
+      </div>
     </div>
   );
 };

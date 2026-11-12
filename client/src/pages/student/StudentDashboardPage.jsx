@@ -98,9 +98,9 @@ export const StudentDashboardPage = () => {
   const activeDevice = dashboardData?.activeDevice;
 
   return (
-    <div className="space-y-8">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Student Welcome Banner */}
-      <div className="bg-gradient-to-r from-[#0B1E3D] via-[#12356B] to-[#1769D2] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
+      <div className="shrink-0 bg-gradient-to-r from-[#0B1E3D] via-[#12356B] to-[#1769D2] rounded-3xl p-6 sm:p-8 text-white shadow-xl relative overflow-hidden">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-2">
             <div className="flex flex-wrap items-center gap-2">
@@ -147,7 +147,7 @@ export const StudentDashboardPage = () => {
       </div>
 
       {/* Student Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center shrink-0">
             <BookOpen className="w-6 h-6" />
@@ -189,6 +189,8 @@ export const StudentDashboardPage = () => {
         </div>
       </div>
 
+      {/* Scrollable Cards Section */}
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none space-y-6 pr-1">
       {/* Upcoming Live Classes (Zoom) */}
       <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-slate-100">
@@ -267,7 +269,13 @@ export const StudentDashboardPage = () => {
               >
                 <div>
                   <span className="text-[10px] font-black text-[#1769D2] uppercase tracking-wider">
-                    {course?.division === 'BANKERS_PATH' ? "Banker's Path" : "Competitive Exam"}
+                    {course?.division === 'BANKERS_PATH'
+                      ? "Banker's Path"
+                      : course?.division === 'TUITIONS'
+                      ? 'Tuitions & Coaching'
+                      : course?.division === 'ENTRANCE_EXAMS'
+                      ? 'Entrance Exam'
+                      : 'Competitive Exam'}
                   </span>
                   <h3 className="text-base font-black text-[#0B1E3D] mt-0.5 leading-snug">
                     {course?.title}
@@ -321,6 +329,7 @@ export const StudentDashboardPage = () => {
           <span className="text-slate-400 text-[11px]">Last active: {new Date(activeDevice.lastActiveAt).toLocaleTimeString()}</span>
         </div>
       )}
+      </div>
     </div>
   );
 };

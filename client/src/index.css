@@ -52,6 +52,16 @@
   background: #1769D2;
 }
 
+/* Dedicated smooth Y-axis portal scrolling */
+.portal-scroll {
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
 /* Glassmorphism & Card Elevation */
 .glass-panel {
   background: rgba(255, 255, 255, 0.85);

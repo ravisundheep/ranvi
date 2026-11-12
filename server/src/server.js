@@ -9,6 +9,7 @@ const { initSocket } = require('./utils/socketService');
 
 const startServer = async () => {
   try {
+    env.validateProductionEnv();
     await connectDB();
 
     // Initialize daily automated Security Audit Logs cleanup job

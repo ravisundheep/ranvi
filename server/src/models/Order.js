@@ -48,6 +48,10 @@ const OrderSchema = new mongoose.Schema({
     type: String,
     unique: true,
   },
+  durationMonths: {
+    type: Number,
+    default: null,
+  },
 }, {
   timestamps: true,
 });

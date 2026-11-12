@@ -29,8 +29,20 @@ const examActionLimiter = rateLimit({
   },
 });
 
+const paymentLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Too many payment requests from this IP. Please try again after a few minutes.',
+  },
+});
+
 module.exports = {
   authLimiter,
   enquiryLimiter,
   examActionLimiter,
+  paymentLimiter,
 };

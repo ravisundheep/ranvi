@@ -110,6 +110,8 @@ export const AdminLessonsPage = () => {
     setEditingLessonId(null);
     setLessonForm({
       moduleTitle: 'Module 1: Core Fundamentals',
+      subject: '',
+      chapter: '',
       title: '',
       description: '',
       videoUrl: 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4',
@@ -127,6 +129,8 @@ export const AdminLessonsPage = () => {
     setEditingLessonId(lesson._id);
     setLessonForm({
       moduleTitle: lesson.moduleTitle || 'Module 1: Core Fundamentals',
+      subject: lesson.subject || '',
+      chapter: lesson.chapter || '',
       title: lesson.title || '',
       description: lesson.description || '',
       videoUrl: lesson.videoUrl || '',
@@ -183,9 +187,9 @@ export const AdminLessonsPage = () => {
   };
 
   return (
-    <div className="space-y-6 pb-24">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Top Header */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#0B1E3D] font-heading">
             Recorded Video Lessons & Media Uploads
@@ -203,7 +207,7 @@ export const AdminLessonsPage = () => {
       </div>
 
       {/* Select Course Dropdown */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
         <span className="text-xs font-bold text-slate-600 uppercase">Select Course:</span>
         <select
           value={selectedCourseId}
@@ -219,7 +223,8 @@ export const AdminLessonsPage = () => {
       </div>
 
       {/* Lessons Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -244,7 +249,19 @@ export const AdminLessonsPage = () => {
                 lessons.map((lesson, idx) => (
                   <tr key={lesson._id} className="hover:bg-slate-50 transition-colors">
                     <td className="p-4 font-bold text-slate-400">{idx + 1}</td>
-                    <td className="p-4 font-semibold text-slate-600">{lesson.moduleTitle}</td>
+                    <td className="p-4">
+                      <div className="font-semibold text-slate-700">{lesson.moduleTitle}</div>
+                      {(lesson.subject || lesson.chapter) && (
+                        <div className="flex flex-wrap items-center gap-1.5 mt-1 text-[10px]">
+                          {lesson.subject && (
+                            <span className="bg-blue-50 text-[#1769D2] border border-blue-200 px-1.5 py-0.5 rounded font-bold">
+                              {lesson.subject}
+                            </span>
+                          )}
+                          {lesson.chapter && <span className="text-slate-400 font-medium">{lesson.chapter}</span>}
+                        </div>
+                      )}
+                    </td>
                     <td className="p-4 font-bold text-[#0B1E3D]">{lesson.title}</td>
                     <td className="p-4">{lesson.durationMinutes} mins</td>
                     <td className="p-4">
@@ -289,6 +306,7 @@ export const AdminLessonsPage = () => {
           </table>
         </div>
       </div>
+      </div>
 
       {/* Video Preview Modal */}
       {previewVideoUrl && (
@@ -330,7 +348,7 @@ export const AdminLessonsPage = () => {
 
             <form onSubmit={handleSubmitLesson} className="space-y-4 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Module / Paper Chapter *</label>
+                <label className="block font-bold text-slate-700 mb-1">Module / Paper Section *</label>
                 <input
                   type="text"
                   required
@@ -339,6 +357,29 @@ export const AdminLessonsPage = () => {
                   placeholder="e.g. Module 1: Indian Economy Overview"
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Subject (Optional)</label>
+                  <input
+                    type="text"
+                    value={lessonForm.subject}
+                    onChange={(e) => setLessonForm({ ...lessonForm, subject: e.target.value })}
+                    placeholder="e.g. Macroeconomics"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold"
+                  />
+                </div>
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Chapter (Optional)</label>
+                  <input
+                    type="text"
+                    value={lessonForm.chapter}
+                    onChange={(e) => setLessonForm({ ...lessonForm, chapter: e.target.value })}
+                    placeholder="e.g. Chapter 3: Inflation & Growth"
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-semibold"
+                  />
+                </div>
               </div>
 
               <div>

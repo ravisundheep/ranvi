@@ -23,9 +23,9 @@ const getCourses = async (req, res, next) => {
   try {
     const { division, category, search, page = 1, limit = 12, mode, featured, state, includeUnpublished } = req.query;
 
-    // Check fast memory cache for standard public queries
+    // Check fast memory cache for standard anonymous public queries only
     const cacheKey = JSON.stringify(req.query);
-    if (includeUnpublished !== 'true' && !search) {
+    if (includeUnpublished !== 'true' && !search && !req.user) {
       const cached = courseListCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < 60000) {
         return sendSuccess(res, 'Courses retrieved (cached)', cached.data);
@@ -223,6 +223,79 @@ const getCategories = async (req, res, next) => {
   }
 };
 
+// Admin: Create Category
+const createCategory = async (req, res, next) => {
+  try {
+    const { name, slug, division, description, icon, color, sortOrder, isActive } = req.body;
+    if (!name || !division) {
+      return sendError(res, 'Category name and division are required', 400);
+    }
+
+    const catSlug = slug || name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    const existing = await Category.findOne({ slug: catSlug });
+    if (existing) {
+      return sendError(res, 'A category with this slug already exists', 400);
+    }
+
+    const category = await Category.create({
+      name,
+      slug: catSlug,
+      division,
+      description: description || '',
+      icon: icon || 'BookOpen',
+      color: color || '#1769D2',
+      sortOrder: sortOrder || 0,
+      isActive: isActive !== undefined ? Boolean(isActive) : true,
+    });
+
+    cachedCategories.clear();
+    return sendSuccess(res, 'Category created successfully', category, 201);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Update Category
+const updateCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const category = await Category.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
+    if (!category) {
+      return sendError(res, 'Category not found', 404);
+    }
+
+    cachedCategories.clear();
+    return sendSuccess(res, 'Category updated successfully', category);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin: Delete Category
+const deleteCategory = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const linkedCoursesCount = await Course.countDocuments({ categoryId: id });
+    if (linkedCoursesCount > 0) {
+      return sendError(
+        res,
+        `Cannot delete category: ${linkedCoursesCount} course(s) are linked to it. Please reassign them first.`,
+        400
+      );
+    }
+
+    const category = await Category.findByIdAndDelete(id);
+    if (!category) {
+      return sendError(res, 'Category not found', 404);
+    }
+
+    cachedCategories.clear();
+    return sendSuccess(res, 'Category deleted successfully');
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Admin: Create course
 const createCourse = async (req, res, next) => {
   try {
@@ -284,19 +357,23 @@ const createCourse = async (req, res, next) => {
       return sendError(res, 'A course with this slug already exists', 400);
     }
 
+    const resolvedFee = fee !== undefined ? Number(fee) : Number(req.body.price ?? 0);
+    const resolvedShortDesc = shortDescription || req.body.description || title;
+    const resolvedFullDesc = fullDescription || req.body.description || shortDescription || title;
+
     const course = await Course.create({
       title,
       slug: courseSlug,
       division,
       categoryId: resolvedCategoryId,
-      shortDescription,
-      fullDescription,
+      shortDescription: resolvedShortDesc,
+      fullDescription: resolvedFullDesc,
       thumbnail,
       mode: mode || 'BOTH',
       duration: duration || '3 Months',
       batchSchedule: batchSchedule || 'Daily Live & Interactive Batches',
-      fee: Number(fee),
-      originalPrice: originalPrice ? Number(originalPrice) : fee,
+      fee: resolvedFee,
+      originalPrice: originalPrice ? Number(originalPrice) : resolvedFee,
       validityDays: validityDays || 180,
       isDemoEligible: isDemoEligible !== undefined ? isDemoEligible : true,
       demoLessonsCount: demoLessonsCount || 2,
@@ -424,6 +501,9 @@ module.exports = {
   getCourses,
   getCourseBySlug,
   getCategories,
+  createCategory,
+  updateCategory,
+  deleteCategory,
   getAvailableStates,
   createCourse,
   updateCourse,

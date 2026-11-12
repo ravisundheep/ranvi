@@ -5,16 +5,19 @@ const { authenticate } = require('../middleware/authenticate');
 const { authorize } = require('../middleware/authorize');
 const { enforceSingleDevice } = require('../middleware/deviceSession');
 
+// Public: sanitized schedule without Zoom URLs/passcodes
+router.get('/public-schedule', liveClassController.getPublicLiveClassSchedule);
+
 // Student: get live classes for enrolled courses
 router.get('/student', authenticate, enforceSingleDevice, liveClassController.getStudentLiveClasses);
 
-// Admin: get all live classes
-router.get('/', authenticate, authorize('SUPER_ADMIN', 'ADMIN'), liveClassController.getAllLiveClasses);
+// Staff / Admin: view all live classes
+router.get('/', authenticate, authorize('SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF'), liveClassController.getAllLiveClasses);
 
-// Admin: manage live classes
-router.post('/', authenticate, authorize('SUPER_ADMIN', 'ADMIN'), liveClassController.createLiveClass);
-router.put('/:id/cancel', authenticate, authorize('SUPER_ADMIN', 'ADMIN'), liveClassController.cancelLiveClass);
-router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'ADMIN'), liveClassController.updateLiveClass);
+// Staff / Admin: manage live classes (delete restricted to Admin/SuperAdmin)
+router.post('/', authenticate, authorize('SUPER_ADMIN', 'ADMIN', 'FACULTY'), liveClassController.createLiveClass);
+router.put('/:id/cancel', authenticate, authorize('SUPER_ADMIN', 'ADMIN', 'FACULTY'), liveClassController.cancelLiveClass);
+router.put('/:id', authenticate, authorize('SUPER_ADMIN', 'ADMIN', 'FACULTY'), liveClassController.updateLiveClass);
 router.delete('/:id', authenticate, authorize('SUPER_ADMIN', 'ADMIN'), liveClassController.deleteLiveClass);
 
 module.exports = router;

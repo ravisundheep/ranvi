@@ -22,6 +22,15 @@ const AuditLogSchema = new mongoose.Schema({
   resourceId: {
     type: String,
   },
+  category: {
+    type: String,
+    enum: ['AUTH', 'FINANCIAL', 'STAFF_RBAC', 'CONTENT', 'SYSTEM'],
+    default: 'SYSTEM',
+  },
+  isImmutable: {
+    type: Boolean,
+    default: false,
+  },
   details: {
     type: mongoose.Schema.Types.Mixed,
   },

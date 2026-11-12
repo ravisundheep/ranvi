@@ -27,8 +27,53 @@ const NotificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['LIVE_CLASS', 'EXAM', 'PAYMENT', 'ANNOUNCEMENT', 'SYSTEM', 'EXAM_ALERT', 'ADMISSION', 'RESULT', 'GENERAL'],
+      enum: ['LIVE_CLASS', 'EXAM', 'PAYMENT', 'ANNOUNCEMENT', 'SYSTEM', 'EXAM_ALERT', 'ADMISSION', 'RESULT', 'JOB_ALERT', 'GENERAL'],
       default: 'ANNOUNCEMENT',
+    },
+    category: {
+      type: String,
+      enum: ['BANKING', 'CENTRAL_GOVT', 'STATE_GOVT', 'INSURANCE', 'RAILWAYS', 'DEFENSE', 'TEACHING', 'GENERAL'],
+      default: 'GENERAL',
+    },
+    organization: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    postName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    vacancies: {
+      type: Number,
+      default: 0,
+    },
+    qualification: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    ageLimit: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    applicationStartDate: {
+      type: Date,
+    },
+    applicationEndDate: {
+      type: Date,
+    },
+    applyOnlineUrl: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    officialNotificationPdfUrl: {
+      type: String,
+      trim: true,
+      default: '',
     },
     link: {
       type: String,

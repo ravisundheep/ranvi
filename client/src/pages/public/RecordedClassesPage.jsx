@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { courseService } from '../../services';
 import { PageBanner } from '../../components/common/PageBanner';
+import { LessonMediaPlayer } from '../../components/courses/LessonMediaPlayer';
 import { PlayCircle, Lock, BookOpen, Clock, ShieldCheck, ArrowRight, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
@@ -12,10 +13,24 @@ export const RecordedClassesPage = () => {
   const [activeLesson, setActiveLesson] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const selectLessonForPlayback = async (lesson) => {
+    if (!lesson || !lesson.isUnlocked) return;
+    try {
+      const pbRes = await courseService.getLessonPlayback(lesson._id);
+      if (pbRes?.success && pbRes.data?.lesson) {
+        setActiveLesson({ ...lesson, ...pbRes.data.lesson, isUnlocked: true });
+      } else {
+        setActiveLesson(lesson);
+      }
+    } catch (err) {
+      console.error('Playback authorization failed:', err);
+    }
+  };
+
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await courseService.getCourses({ limit: 20 });
+        const res = await courseService.getCourses({ limit: 50 });
         if (res.success && res.data.courses?.length > 0) {
           setCourses(res.data.courses);
           setSelectedCourse(res.data.courses[0]);
@@ -32,11 +47,15 @@ export const RecordedClassesPage = () => {
 
   const loadCourseLessons = async (courseId) => {
     try {
+      setActiveLesson(null);
       const res = await courseService.getCourseLessons(courseId);
       if (res.success && res.data) {
-        setLessons(res.data.lessons || []);
-        const firstPreview = res.data.lessons?.find(l => l.isPreview);
-        if (firstPreview) setActiveLesson(firstPreview);
+        const list = res.data.lessons || [];
+        setLessons(list);
+        const firstPlayable = list.find((l) => l.isUnlocked || l.isPreview);
+        if (firstPlayable) {
+          await selectLessonForPlayback(firstPlayable);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -120,14 +139,7 @@ export const RecordedClassesPage = () => {
                   )}
                 </div>
 
-                <div className="aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-inner">
-                  <video
-                    src={activeLesson.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
-                    controls
-                    controlsList="nodownload"
-                    className="w-full h-full object-contain"
-                  />
-                </div>
+                <LessonMediaPlayer lesson={activeLesson} />
 
                 <div>
                   <h3 className="text-lg font-bold font-heading">{activeLesson.title}</h3>
@@ -154,7 +166,7 @@ export const RecordedClassesPage = () => {
               {lessons.map((lesson, idx) => (
                 <div
                   key={lesson._id}
-                  onClick={() => lesson.isUnlocked && setActiveLesson(lesson)}
+                  onClick={() => lesson.isUnlocked && selectLessonForPlayback(lesson)}
                   className={`p-3 rounded-xl border text-xs transition-all flex items-center justify-between gap-3 ${
                     activeLesson?._id === lesson._id
                       ? 'bg-[#EAF3FF] border-[#1769D2] text-[#12356B] font-bold shadow-xs'

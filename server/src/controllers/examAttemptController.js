@@ -16,7 +16,7 @@ const startExam = async (req, res, next) => {
       return sendError(res, 'Mock test not found or unavailable', 404);
     }
 
-    // Access check: Free demo or active course entitlement or admin role
+    // Access check: Free demo, individual test purchase, active course entitlement, or admin role
     let hasAccess = false;
     if (['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
       hasAccess = true;
@@ -26,10 +26,12 @@ const startExam = async (req, res, next) => {
       await User.findByIdAndUpdate(studentId, {
         $addToSet: { 'demoUsage.mockTests': mockTest._id },
       });
-    } else if (mockTest.courseId) {
+    } else {
+      const lookupIds = [mockTest._id];
+      if (mockTest.courseId?._id) lookupIds.push(mockTest.courseId._id);
       const entitlement = await Entitlement.findOne({
         studentId,
-        itemId: mockTest.courseId._id,
+        itemId: { $in: lookupIds },
         isActive: true,
         status: { $in: ['ACTIVE', 'ENROLLED'] },
         validUntil: { $gte: new Date() },
@@ -63,6 +65,18 @@ const startExam = async (req, res, next) => {
     }
 
     if (!attempt) {
+      // Enforce attempt limit (maxAttempts=0 means unlimited)
+      if (mockTest.maxAttempts > 0 && !['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
+        const completedAttempts = await ExamAttempt.countDocuments({
+          studentId,
+          mockTestId,
+          status: { $in: ['SUBMITTED', 'EXPIRED'] },
+        });
+        if (completedAttempts >= mockTest.maxAttempts) {
+          return sendError(res, `You have reached the maximum number of attempts (${mockTest.maxAttempts}) for this test.`, 403, { code: 'MAX_ATTEMPTS_REACHED', attemptsUsed: completedAttempts, maxAttempts: mockTest.maxAttempts });
+        }
+      }
+
       const expiresAt = new Date(now.getTime() + mockTest.durationMinutes * 60 * 1000);
       attempt = await ExamAttempt.create({
         studentId,
@@ -228,11 +242,13 @@ const finalizeAttempt = async (attemptId, clientTimeSpent = null) => {
     } else {
       isCorrect = false;
       incorrectCount += 1;
-      const penalty = question.negativeMarks !== undefined ? question.negativeMarks : 0.25;
-      marksAwarded = -penalty;
-      score -= penalty;
+      if (mockTest.negativeMarkingEnabled !== false) {
+        const penalty = question.negativeMarks !== undefined ? question.negativeMarks : 0.25;
+        marksAwarded = -penalty;
+        score -= penalty;
+        subjectStats[subject].score -= penalty;
+      }
       subjectStats[subject].incorrect += 1;
-      subjectStats[subject].score -= penalty;
     }
 
     evaluatedResponses.push({

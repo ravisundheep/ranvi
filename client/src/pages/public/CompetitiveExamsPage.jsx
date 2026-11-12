@@ -270,8 +270,8 @@ export const CompetitiveExamsPage = () => {
               >
                 <option value="ALL">All Modes</option>
                 <option value="ONLINE">Live Online</option>
-                <option value="CLASSROOM">Classroom</option>
-                <option value="SELF_PACED">Recorded / Self-Paced</option>
+                <option value="OFFLINE">Classroom / Offline</option>
+                <option value="BOTH">Hybrid (Online + Offline)</option>
               </select>
 
               {(searchQuery || selectedCat !== 'ALL' || selectedMode !== 'ALL') && (

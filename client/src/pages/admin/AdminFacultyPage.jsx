@@ -185,9 +185,9 @@ export const AdminFacultyPage = () => {
   );
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-black text-[#0B1E3D] font-heading">
             Faculty & Mentors Management
@@ -206,7 +206,7 @@ export const AdminFacultyPage = () => {
       </div>
 
       {/* Search & Filter Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
         <Search className="w-5 h-5 text-slate-400" />
         <input
           type="text"
@@ -223,7 +223,8 @@ export const AdminFacultyPage = () => {
       </div>
 
       {/* Faculty Cards Grid */}
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {[1, 2, 3].map((i) => (
             <div key={i} className="h-64 bg-slate-200 animate-pulse rounded-3xl"></div>
@@ -309,6 +310,7 @@ export const AdminFacultyPage = () => {
           <p className="text-xs text-slate-500 mt-1">Click "Add New Faculty" to create a mentor profile.</p>
         </div>
       )}
+      </div>
 
       {/* Faculty Add / Edit Modal */}
       {showModal && (

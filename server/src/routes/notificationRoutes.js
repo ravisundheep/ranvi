@@ -12,12 +12,12 @@ router.put('/mark-read/:id', authenticate, notificationController.markAsRead);
 router.get('/public', notificationController.getPublicNotifications);
 router.get('/public/:id', notificationController.getPublicNotificationById);
 
-// Admin Notifications Management
-router.get('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.getAdminNotifications);
-router.post('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.createAdminNotification);
-router.put('/admin/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.updateAdminNotification);
+// Admin & Support Staff Notifications Management (delete restricted to Admin/SuperAdmin)
+router.get('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'), notificationController.getAdminNotifications);
+router.post('/admin', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'), notificationController.createAdminNotification);
+router.put('/admin/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'), notificationController.updateAdminNotification);
 router.delete('/admin/:id', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.deleteAdminNotification);
-router.patch('/admin/:id/toggle-status', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.toggleNotificationStatus);
-router.patch('/admin/:id/toggle-pinned', authenticate, authorize('ADMIN', 'SUPER_ADMIN'), notificationController.toggleNotificationPinned);
+router.patch('/admin/:id/toggle-status', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'), notificationController.toggleNotificationStatus);
+router.patch('/admin/:id/toggle-pinned', authenticate, authorize('ADMIN', 'SUPER_ADMIN', 'SUPPORT_STAFF'), notificationController.toggleNotificationPinned);
 
 module.exports = router;

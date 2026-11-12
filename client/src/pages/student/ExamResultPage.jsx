@@ -80,9 +80,9 @@ export const ExamResultPage = () => {
   };
 
   return (
-    <div className="space-y-8 pb-16">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Top Header */}
-      <div className="flex items-center justify-between">
+      <div className="shrink-0 flex items-center justify-between">
         <Link
           to="/student/mock-tests"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#12356B]"
@@ -94,6 +94,7 @@ export const ExamResultPage = () => {
         </span>
       </div>
 
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none space-y-6 pr-1 pb-8">
       {/* Main Score Card Banner */}
       <div className={`p-8 rounded-3xl text-white shadow-xl flex flex-col md:flex-row items-center justify-between gap-6 ${
         attempt.isPassed
@@ -274,10 +275,19 @@ export const ExamResultPage = () => {
                   )}
                 </div>
 
-                {/* Question Text */}
+                {/* Question Text & Image */}
                 <h4 className="text-base font-bold text-[#17243A] leading-relaxed">
                   {q.questionText}
                 </h4>
+                {q.questionImage && (
+                  <div className="rounded-xl overflow-hidden border border-slate-200 bg-white max-w-lg">
+                    <img
+                      src={q.questionImage}
+                      alt={`Question ${idx + 1} figure`}
+                      className="max-h-64 w-auto object-contain mx-auto p-2"
+                    />
+                  </div>
+                )}
 
                 {/* Options Review */}
                 <div className="space-y-2 pt-2">
@@ -334,6 +344,7 @@ export const ExamResultPage = () => {
             );
           })}
         </div>
+      </div>
       </div>
     </div>
   );

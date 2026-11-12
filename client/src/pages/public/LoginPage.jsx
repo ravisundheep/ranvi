@@ -27,7 +27,7 @@ export const LoginPage = () => {
       const data = await login(email, password);
       success(`Welcome back, ${data.user.name}!`);
 
-      if (['SUPER_ADMIN', 'ADMIN'].includes(data.user.role)) {
+      if (['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF'].includes(data.user.role)) {
         navigate('/admin/dashboard');
       } else {
         navigate(redirectPath);
@@ -38,12 +38,6 @@ export const LoginPage = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  // Quick fill credentials for reviewers
-  const handleQuickFill = (demoEmail, demoPw) => {
-    setEmail(demoEmail);
-    setPassword(demoPw);
   };
 
   return (
@@ -77,9 +71,14 @@ export const LoginPage = () => {
             </div>
 
             <div>
-              <label className="block text-xs font-black text-slate-700 uppercase tracking-wider mb-1.5">
-                Password
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="block text-xs font-black text-slate-700 uppercase tracking-wider">
+                  Password
+                </label>
+                <Link to="/forgot-password" className="text-xs font-bold text-[#1769D2] hover:underline">
+                  Forgot Password?
+                </Link>
+              </div>
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3.5" />
                 <input
@@ -109,29 +108,6 @@ export const LoginPage = () => {
             <span>
               <strong>Single-Device Concurrency:</strong> Only one active device session is permitted per student account. New logins automatically revoke prior sessions.
             </span>
-          </div>
-
-          {/* Quick Fill Test Accounts */}
-          <div className="pt-4 border-t border-slate-100 space-y-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider text-center">
-              Quick Test Credentials (1-Click)
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => handleQuickFill('student@ranviinstitutions.com', 'RanviStudent@2026!')}
-                className="py-2.5 px-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold transition-all text-center flex items-center justify-center gap-1.5"
-              >
-                <span>Student</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleQuickFill('admin@ranviinstitutions.com', 'RanviAdmin@2026!')}
-                className="py-2.5 px-3 rounded-xl bg-[#EAF3FF] hover:bg-blue-100 text-[#1769D2] font-black transition-all text-center flex items-center justify-center gap-1.5"
-              >
-                <span>Admin</span>
-              </button>
-            </div>
           </div>
         </div>
 

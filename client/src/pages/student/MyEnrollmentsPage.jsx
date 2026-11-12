@@ -49,9 +49,9 @@ export const MyEnrollmentsPage = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-[#0B2545] font-serif">
             My Program Enrollments & Receipts
@@ -70,8 +70,8 @@ export const MyEnrollmentsPage = () => {
       </div>
 
       {/* Filter Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1">
-        {['ALL', 'ENROLLED', 'PENDING_VERIFICATION', 'COMPLETED', 'CANCELLED'].map((st) => (
+      <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-1">
+        {['ALL', 'ENROLLED', 'ACTIVE', 'PENDING_PAYMENT', 'CANCELLED', 'REFUNDED', 'EXPIRED'].map((st) => (
           <button
             key={st}
             type="button"
@@ -82,12 +82,13 @@ export const MyEnrollmentsPage = () => {
                 : 'bg-white border border-slate-200 text-slate-600 hover:bg-slate-50'
             }`}
           >
-            {st === 'ALL' ? 'All Enrollments' : st.replace('_', ' ')}
+            {st === 'ALL' ? 'All Enrollments' : st.replace(/_/g, ' ')}
           </button>
         ))}
       </div>
 
       {/* Enrollments Table / Cards */}
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
@@ -150,7 +151,7 @@ export const MyEnrollmentsPage = () => {
                   <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 pt-1">
                     <span className="flex items-center gap-1">
                       <Clock className="w-3.5 h-3.5 text-slate-400" />
-                      {enr.batchTiming || 'Standard Batch'}
+                      {enr.preferredBatch || enr.batchTiming || 'Standard Batch'}
                     </span>
                     <span className="flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-slate-400" />
@@ -192,6 +193,7 @@ export const MyEnrollmentsPage = () => {
           })}
         </div>
       )}
+      </div>
 
       {/* Receipt Modal Popup */}
       {selectedReceipt && (
@@ -234,15 +236,17 @@ export const MyEnrollmentsPage = () => {
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Batch Schedule</span>
                   <p className="font-bold text-slate-900">
-                    {selectedReceipt.batchTiming || 'Standard Batch'}
+                    {selectedReceipt.preferredBatch || selectedReceipt.batchTiming || 'Standard Batch'}
                   </p>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Student Name</span>
                   <p className="font-bold text-slate-900">
-                    {selectedReceipt.studentDetails?.name || 'Enrolled Student'}
+                    {selectedReceipt.studentName || selectedReceipt.studentDetails?.name || 'Enrolled Student'}
                   </p>
-                  <p className="text-[10px] text-slate-400">{selectedReceipt.studentDetails?.email}</p>
+                  <p className="text-[10px] text-slate-400">
+                    {selectedReceipt.studentEmail || selectedReceipt.studentDetails?.email}
+                  </p>
                 </div>
                 <div className="p-3 bg-slate-50 rounded-xl space-y-0.5">
                   <span className="text-[10px] font-semibold text-slate-400 uppercase">Admission Date</span>

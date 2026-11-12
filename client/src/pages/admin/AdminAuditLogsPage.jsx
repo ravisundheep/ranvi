@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { adminService } from '../../services';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
   ShieldAlert,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 
 export const AdminAuditLogsPage = () => {
+  const { isAdmin } = useAuth();
   const { success, error: toastError } = useToast();
 
   const [logs, setLogs] = useState([]);
@@ -35,7 +37,9 @@ export const AdminAuditLogsPage = () => {
     total: 0,
   });
 
-  // Client-side search & action filter
+  // Scope, category, search & action filter
+  const [scope, setScope] = useState('all');
+  const [selectedCategory, setSelectedCategory] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedAction, setSelectedAction] = useState('ALL');
 
@@ -46,7 +50,11 @@ export const AdminAuditLogsPage = () => {
         else setLoading(true);
         setErrorMessage(null);
 
-        const res = await adminService.getAuditLogs({ limit: 100 });
+        const res = await adminService.getAuditLogs({
+          scope,
+          category: selectedCategory !== 'ALL' ? selectedCategory : undefined,
+          limit: 100,
+        });
         if (res?.success && res.data) {
           setLogs(res.data.logs || []);
           setMeta({
@@ -72,7 +80,7 @@ export const AdminAuditLogsPage = () => {
         setRefreshing(false);
       }
     },
-    [success, toastError]
+    [success, toastError, scope, selectedCategory]
   );
 
   useEffect(() => {
@@ -147,16 +155,16 @@ export const AdminAuditLogsPage = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* ========================================================
           1. HEADER WITH CURRENT-DAY AUDIT TRAIL BADGE & ACTIONS
       ======================================================== */}
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex flex-wrap items-center gap-2 mb-1">
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-wider bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-              Current-Day Records Only
+              {scope === 'all' ? 'Immutable Financial & RBAC History' : 'Current-Day View'}
             </span>
             <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
               <Globe className="w-3 h-3 text-[#1769D2]" />
@@ -165,11 +173,11 @@ export const AdminAuditLogsPage = () => {
           </div>
 
           <h1 className="text-xl sm:text-2xl font-extrabold text-[#12356B] font-heading">
-            Security & Operations Audit Trail
+            Security & Financial Audit Trail
           </h1>
           <p className="text-xs text-slate-500 mt-1 max-w-2xl leading-relaxed">
-            Real-time immutable log of logins, single-device session revocations, manual grants, and administrative updates.
-            All records older than the start of the current day are automatically and permanently purged from the database.
+            Financial transactions, staff RBAC mutations, device resets, and suspension records are immutable and preserved permanently.
+            Ephemeral non-immutable logs prior to start-of-day are automatically pruned.
           </p>
         </div>
 
@@ -186,23 +194,25 @@ export const AdminAuditLogsPage = () => {
             <span>{refreshing ? 'Refreshing...' : 'Refresh'}</span>
           </button>
 
-          <button
-            type="button"
-            onClick={handleTriggerCleanup}
-            disabled={cleaning || loading}
-            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 active:scale-95 text-xs font-bold text-rose-700 shadow-xs transition-all disabled:opacity-50"
-            title="Purge all audit logs created prior to today's start"
-          >
-            <Trash2 className={`w-3.5 h-3.5 ${cleaning ? 'animate-spin' : ''}`} />
-            <span>{cleaning ? 'Cleaning DB...' : 'Run Daily Cleanup'}</span>
-          </button>
+          {isAdmin && (
+            <button
+              type="button"
+              onClick={handleTriggerCleanup}
+              disabled={cleaning || loading}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-rose-200 bg-rose-50 hover:bg-rose-100 active:scale-95 text-xs font-bold text-rose-700 shadow-xs transition-all disabled:opacity-50"
+              title="Prune expired ephemeral audit logs while preserving immutable financial & security trails"
+            >
+              <Trash2 className={`w-3.5 h-3.5 ${cleaning ? 'animate-spin' : ''}`} />
+              <span>{cleaning ? 'Cleaning DB...' : 'Prune Ephemeral Logs'}</span>
+            </button>
+          )}
         </div>
       </div>
 
       {/* ========================================================
           2. METRIC STRIP (DATE, TIMEZONE, TOTAL TODAY, STATUS)
       ======================================================== */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {/* Card 1: Today's Date */}
         <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center shrink-0">
@@ -267,7 +277,7 @@ export const AdminAuditLogsPage = () => {
       {/* ========================================================
           3. SEARCH & ACTION FILTER BAR
       ======================================================== */}
-      <div className="bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="shrink-0 bg-white p-3.5 sm:p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Search Input */}
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
@@ -280,30 +290,47 @@ export const AdminAuditLogsPage = () => {
           />
         </div>
 
-        {/* Action Filter Dropdown */}
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-          <SlidersHorizontal className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+        {/* Scope, Category & Action Filters */}
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <select
+            value={scope}
+            onChange={(e) => setScope(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none cursor-pointer"
+          >
+            <option value="all">Full Immutable History</option>
+            <option value="today">Today Only</option>
+          </select>
+
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none cursor-pointer"
+          >
+            <option value="ALL">All Categories</option>
+            <option value="FINANCIAL">Financial & Approvals</option>
+            <option value="STAFF_RBAC">Staff & RBAC Security</option>
+            <option value="AUTH">Auth & Logins</option>
+            <option value="SYSTEM">System</option>
+          </select>
+
           <select
             value={selectedAction}
             onChange={(e) => setSelectedAction(e.target.value)}
-            className="w-full sm:w-64 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none cursor-pointer"
+            className="w-full sm:w-56 px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white focus:outline-none cursor-pointer"
           >
             <option value="ALL">All Event Actions</option>
-            <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
-            <option value="LOGIN_PREVIOUS_SESSION_REVOKED">LOGIN_PREVIOUS_SESSION_REVOKED</option>
-            <option value="STUDENT_DEVICE_RESET">STUDENT_DEVICE_RESET</option>
-            <option value="STUDENT_ACTIVATED">STUDENT_ACTIVATED</option>
-            <option value="STUDENT_SUSPENDED">STUDENT_SUSPENDED</option>
-            <option value="MANUAL_ACCESS_GRANTED">MANUAL_ACCESS_GRANTED</option>
-            <option value="PAYMENT_SUCCESS_ENTITLEMENT_GRANTED">PAYMENT_SUCCESS_ENTITLEMENT_GRANTED</option>
+            {Array.from(new Set(logs.map((l) => l.action).filter(Boolean))).map((act) => (
+              <option key={act} value={act}>{act}</option>
+            ))}
           </select>
         </div>
       </div>
 
-      {/* ========================================================
-          4. ERROR ALERT BANNER
-      ======================================================== */}
-      {errorMessage && (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1 space-y-6">
+        {/* ========================================================
+            4. ERROR ALERT BANNER
+        ======================================================== */}
+        {errorMessage && (
         <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 flex items-center justify-between text-xs text-rose-800 font-bold">
           <div className="flex items-center gap-2">
             <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
@@ -473,6 +500,7 @@ export const AdminAuditLogsPage = () => {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 };

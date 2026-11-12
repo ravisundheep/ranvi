@@ -33,6 +33,16 @@ export const AdminNotificationsPage = () => {
     message: '',
     description: '',
     type: 'ANNOUNCEMENT',
+    category: 'GENERAL',
+    organization: '',
+    postName: '',
+    vacancies: '',
+    qualification: '',
+    ageLimit: '',
+    applicationStartDate: '',
+    applicationEndDate: '',
+    applyOnlineUrl: '',
+    officialNotificationPdfUrl: '',
     targetAudience: 'ALL',
     isPublic: true,
     actionUrl: '',
@@ -74,6 +84,16 @@ export const AdminNotificationsPage = () => {
       message: '',
       description: '',
       type: 'ANNOUNCEMENT',
+      category: 'GENERAL',
+      organization: '',
+      postName: '',
+      vacancies: '',
+      qualification: '',
+      ageLimit: '',
+      applicationStartDate: '',
+      applicationEndDate: '',
+      applyOnlineUrl: '',
+      officialNotificationPdfUrl: '',
       targetAudience: 'ALL',
       isPublic: true,
       actionUrl: '',
@@ -92,9 +112,19 @@ export const AdminNotificationsPage = () => {
       message: notif.message || '',
       description: notif.description || '',
       type: notif.type || 'ANNOUNCEMENT',
+      category: notif.category || 'GENERAL',
+      organization: notif.organization || '',
+      postName: notif.postName || '',
+      vacancies: notif.vacancies || '',
+      qualification: notif.qualification || '',
+      ageLimit: notif.ageLimit || '',
+      applicationStartDate: notif.applicationStartDate ? new Date(notif.applicationStartDate).toISOString().split('T')[0] : '',
+      applicationEndDate: notif.applicationEndDate ? new Date(notif.applicationEndDate).toISOString().split('T')[0] : '',
+      applyOnlineUrl: notif.applyOnlineUrl || '',
+      officialNotificationPdfUrl: notif.officialNotificationPdfUrl || '',
       targetAudience: notif.targetAudience || 'ALL',
       isPublic: notif.isPublic !== undefined ? notif.isPublic : true,
-      actionUrl: notif.actionUrl || '',
+      actionUrl: notif.actionUrl || notif.link || '',
       status: notif.status || 'PUBLISHED',
       isPinned: Boolean(notif.isPinned),
       publishedAt: notif.publishedAt ? new Date(notif.publishedAt).toISOString().split('T')[0] : '',
@@ -117,10 +147,10 @@ export const AdminNotificationsPage = () => {
     try {
       setSaving(true);
       if (editingNotification) {
-        const res = await publicNotificationService.updateNotification(editingNotification._id, formData);
+        const res = await publicNotificationService.updateAdminNotification(editingNotification._id, formData);
         if (res?.success) success('Notification updated successfully');
       } else {
-        const res = await publicNotificationService.createNotification(formData);
+        const res = await publicNotificationService.createAdminNotification(formData);
         if (res?.success) success('Notification created and announced');
       }
       setModalOpen(false);
@@ -135,7 +165,7 @@ export const AdminNotificationsPage = () => {
   // Toggle Pinned
   const handleTogglePinned = async (id) => {
     try {
-      const res = await publicNotificationService.togglePinned(id);
+      const res = await publicNotificationService.toggleNotificationPinned(id);
       if (res?.success) {
         success(`Pinned status updated`);
         fetchNotifications();
@@ -148,7 +178,7 @@ export const AdminNotificationsPage = () => {
   // Toggle Status
   const handleToggleStatus = async (id) => {
     try {
-      const res = await publicNotificationService.toggleStatus(id);
+      const res = await publicNotificationService.toggleNotificationStatus(id);
       if (res?.success) {
         success(`Status updated to ${res.data?.status}`);
         fetchNotifications();
@@ -162,7 +192,7 @@ export const AdminNotificationsPage = () => {
   const handleDelete = async (id, title) => {
     if (!window.confirm(`Delete announcement "${title}"?`)) return;
     try {
-      const res = await publicNotificationService.deleteNotification(id);
+      const res = await publicNotificationService.deleteAdminNotification(id);
       if (res?.success) {
         success('Notification deleted successfully');
         fetchNotifications();
@@ -173,9 +203,9 @@ export const AdminNotificationsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
             Institutional Announcements & Notifications
@@ -195,7 +225,7 @@ export const AdminNotificationsPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row gap-3 items-center justify-between">
         <div className="relative w-full md:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -208,7 +238,7 @@ export const AdminNotificationsPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-          {['ALL', 'ANNOUNCEMENT', 'EXAM_ALERT', 'ADMISSION', 'GENERAL'].map((t) => (
+          {['ALL', 'JOB_ALERT', 'EXAM_ALERT', 'ANNOUNCEMENT', 'ADMISSION', 'RESULT', 'GENERAL'].map((t) => (
             <button
               key={t}
               type="button"
@@ -219,14 +249,15 @@ export const AdminNotificationsPage = () => {
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
             >
-              {t.replace('_', ' ')}
+              {t === 'ALL' ? 'All Types' : t.replace('_', ' ')}
             </button>
           ))}
         </div>
       </div>
 
       {/* Table */}
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading notifications...</p>
@@ -265,6 +296,25 @@ export const AdminNotificationsPage = () => {
                             {notif.title}
                           </span>
                         </div>
+                        {notif.type === 'JOB_ALERT' && (notif.organization || notif.postName) && (
+                          <div className="flex flex-wrap items-center gap-1.5 text-[10.5px]">
+                            {notif.organization && (
+                              <span className="font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+                                🏢 {notif.organization}
+                              </span>
+                            )}
+                            {notif.postName && (
+                              <span className="font-medium text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded">
+                                📌 {notif.postName}
+                              </span>
+                            )}
+                            {Number(notif.vacancies) > 0 && (
+                              <span className="font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                                👥 {notif.vacancies} Posts
+                              </span>
+                            )}
+                          </div>
+                        )}
                         <p className="text-slate-500 text-[11px] line-clamp-1 max-w-md">
                           {notif.description || notif.message}
                         </p>
@@ -277,22 +327,37 @@ export const AdminNotificationsPage = () => {
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       <div className="space-y-1">
-                        <span className="inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded bg-blue-50 text-[#1769D2]">
-                          {notif.type}
+                        <span className={`inline-block text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                          notif.type === 'JOB_ALERT'
+                            ? 'bg-purple-50 text-purple-700 border border-purple-200'
+                            : 'bg-blue-50 text-[#1769D2]'
+                        }`}>
+                          {notif.type.replace('_', ' ')}
                         </span>
                         <div className="text-[10.5px] text-slate-500 font-medium">
-                          Audience: {notif.targetAudience}
+                          {notif.category ? notif.category.replace('_', ' ') : `Audience: ${notif.targetAudience}`}
                         </div>
                       </div>
                     </td>
                     <td className="p-3.5 text-slate-600 whitespace-nowrap">
-                      {notif.publishedAt
-                        ? new Date(notif.publishedAt).toLocaleDateString('en-IN', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })
-                        : '—'}
+                      <div className="space-y-0.5">
+                        <div>
+                          {notif.publishedAt
+                            ? new Date(notif.publishedAt).toLocaleDateString('en-IN', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })
+                            : '—'}
+                        </div>
+                        {notif.expiresAt && (
+                          <div className={`text-[10px] font-bold ${
+                            new Date(notif.expiresAt) < new Date() ? 'text-rose-600' : 'text-amber-600'
+                          }`}>
+                            {new Date(notif.expiresAt) < new Date() ? 'Expired / Closed' : `Ends: ${new Date(notif.expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                          </div>
+                        )}
+                      </div>
                     </td>
                     <td className="p-3.5 whitespace-nowrap">
                       <button
@@ -346,6 +411,7 @@ export const AdminNotificationsPage = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Create / Edit Modal */}
       {modalOpen && (
@@ -388,8 +454,10 @@ export const AdminNotificationsPage = () => {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-800 focus:outline-none focus:border-[#1769D2]"
                   >
                     <option value="ANNOUNCEMENT">Announcement</option>
+                    <option value="JOB_ALERT">Govt / Banking Job Alert</option>
                     <option value="EXAM_ALERT">Exam Alert</option>
                     <option value="ADMISSION">Admission Notice</option>
+                    <option value="RESULT">Result / Cutoff</option>
                     <option value="GENERAL">General Notice</option>
                   </select>
                 </div>
@@ -408,6 +476,134 @@ export const AdminNotificationsPage = () => {
                   </select>
                 </div>
               </div>
+
+              {formData.type === 'JOB_ALERT' && (
+                <div className="p-3.5 bg-blue-50/60 rounded-xl border border-blue-200/80 space-y-3">
+                  <p className="font-bold text-blue-900 text-xs flex items-center gap-1.5">
+                    <AlertCircle className="w-3.5 h-3.5 text-blue-600" />
+                    Government / Banking Job Alert Specific Details
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Recruiting Sector</label>
+                      <select
+                        value={formData.category}
+                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      >
+                        <option value="BANKING">Banking (IBPS, SBI, RBI)</option>
+                        <option value="CENTRAL_GOVT">Central Govt (SSC, UPSC)</option>
+                        <option value="STATE_GOVT">State Govt (APPSC, TSPSC)</option>
+                        <option value="INSURANCE">Insurance (LIC, NIACL)</option>
+                        <option value="RAILWAYS">Railways (RRB)</option>
+                        <option value="DEFENSE">Defence & Police</option>
+                        <option value="TEACHING">Teaching Exams</option>
+                        <option value="GENERAL">Other Govt Jobs</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Organization / Agency</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. State Bank of India (SBI)"
+                        value={formData.organization}
+                        onChange={(e) => setFormData({ ...formData, organization: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Post / Designation</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Probationary Officer (PO)"
+                        value={formData.postName}
+                        onChange={(e) => setFormData({ ...formData, postName: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Total Vacancies</label>
+                      <input
+                        type="number"
+                        placeholder="e.g. 2000"
+                        value={formData.vacancies}
+                        onChange={(e) => setFormData({ ...formData, vacancies: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Qualification Required</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Any Degree / Graduate"
+                        value={formData.qualification}
+                        onChange={(e) => setFormData({ ...formData, qualification: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Age Limit</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 21 - 30 Years"
+                        value={formData.ageLimit}
+                        onChange={(e) => setFormData({ ...formData, ageLimit: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">App. Start Date</label>
+                      <input
+                        type="date"
+                        value={formData.applicationStartDate}
+                        onChange={(e) => setFormData({ ...formData, applicationStartDate: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">App. End Date (Deadline)</label>
+                      <input
+                        type="date"
+                        value={formData.applicationEndDate}
+                        onChange={(e) => setFormData({ ...formData, applicationEndDate: e.target.value, expiresAt: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Official Apply Online URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://ibpsonline.ibps.in/..."
+                        value={formData.applyOnlineUrl}
+                        onChange={(e) => setFormData({ ...formData, applyOnlineUrl: e.target.value, actionUrl: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Official Notification PDF URL</label>
+                      <input
+                        type="url"
+                        placeholder="https://.../notification.pdf"
+                        value={formData.officialNotificationPdfUrl}
+                        onChange={(e) => setFormData({ ...formData, officialNotificationPdfUrl: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-slate-800 focus:outline-none focus:border-[#1769D2]"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Description / Detailed Body</label>

@@ -8,23 +8,39 @@ const compression = require('compression');
 const env = require('./config/env');
 const routes = require('./routes');
 const errorHandler = require('./middleware/errorHandler');
+const { protectMediaUpload } = require('./middleware/protectedMedia');
+const { sanitizeInput } = require('./middleware/sanitizeInput');
 
 const app = express();
+
+// CORS Configuration (strict in production)
+const allowedOrigins = Array.from(
+  new Set([
+    ...(env.ALLOWED_ORIGINS || []),
+    ...(env.NODE_ENV !== 'production'
+      ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
+      : []),
+  ])
+);
 
 // Security Headers
 app.use(helmet({
   crossOriginResourcePolicy: false,
   crossOriginEmbedderPolicy: false,
-  contentSecurityPolicy: false, // Allows flexible video playback, embeds & fonts
+  frameguard: { action: 'sameorigin' },
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  contentSecurityPolicy: {
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", 'data:', 'https:'],
+      mediaSrc: ["'self'", 'blob:', 'https:'],
+      frameAncestors: ["'self'", ...allowedOrigins],
+      objectSrc: ["'none'"],
+    },
+  },
 }));
-
-// CORS Configuration
-const allowedOrigins = [
-  env.CLIENT_ORIGIN,
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-].filter(Boolean).map(o => o.replace(/\/+$/, ''));
 
 app.use(cors({
   origin: function (origin, callback) {
@@ -32,7 +48,7 @@ app.use(cors({
     const cleanOrigin = origin.replace(/\/+$/, '');
     const isAllowed =
       allowedOrigins.includes(cleanOrigin) ||
-      cleanOrigin.endsWith('.vercel.app') ||
+      (env.ALLOW_VERCEL_PREVIEWS && cleanOrigin.endsWith('.vercel.app')) ||
       env.NODE_ENV !== 'production';
 
     if (isAllowed) {
@@ -55,6 +71,7 @@ app.use(express.json({
 }));
 
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(sanitizeInput);
 app.use(cookieParser());
 app.use(compression());
 
@@ -62,8 +79,16 @@ if (env.NODE_ENV !== 'test') {
   app.use(morgan('dev'));
 }
 
-// Static files for media uploads (images, videos, handouts)
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+// Public static images (thumbnails, faculty avatars, banners) & protected media files
+app.use('/uploads/images', express.static(path.join(__dirname, '../uploads/images')));
+app.get('/uploads/videos/:filename', protectMediaUpload('videos'));
+app.get('/uploads/papers/:filename', protectMediaUpload('papers'));
+app.use('/uploads', (req, res) => {
+  res.status(403).json({
+    success: false,
+    message: 'Direct access to this upload directory is forbidden.',
+  });
+});
 
 // Root Endpoint (Welcome & Uptime Check)
 app.get('/', (req, res) => {

@@ -1,7 +1,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { authService } from '../services';
+import { authService, clearClientCache } from '../services';
 
 const AuthContext = createContext(null);
+
+export const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF'];
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -34,6 +36,7 @@ export const AuthProvider = ({ children }) => {
 
     // Listen for single-device revocation events from API interceptor
     const handleRevocation = (e) => {
+      clearClientCache();
       setUser(null);
       setSessionRevokedMessage(e.detail || 'Your session was ended because this account logged in on another device.');
     };
@@ -44,6 +47,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     setSessionRevokedMessage('');
+    clearClientCache();
     const res = await authService.login(email, password);
     if (res.success && res.data) {
       localStorage.setItem('ranvi_token', res.data.token);
@@ -56,6 +60,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     setSessionRevokedMessage('');
+    clearClientCache();
     const res = await authService.register(userData);
     if (res.success && res.data) {
       localStorage.setItem('ranvi_token', res.data.token);
@@ -67,10 +72,14 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    await authService.logout();
-    localStorage.removeItem('ranvi_token');
-    localStorage.removeItem('ranvi_user');
-    setUser(null);
+    try {
+      await authService.logout();
+    } finally {
+      clearClientCache();
+      localStorage.removeItem('ranvi_token');
+      localStorage.removeItem('ranvi_user');
+      setUser(null);
+    }
   };
 
   const updateProfile = async (profileData) => {
@@ -94,7 +103,13 @@ export const AuthProvider = ({ children }) => {
         updateProfile,
         isAuthenticated: !!user,
         isAdmin: user?.role === 'ADMIN' || user?.role === 'SUPER_ADMIN',
+        isSuperAdmin: user?.role === 'SUPER_ADMIN',
+        isFaculty: user?.role === 'FACULTY',
+        isSupportStaff: user?.role === 'SUPPORT_STAFF',
+        isFinanceStaff: user?.role === 'FINANCE_STAFF',
+        isStaff: Boolean(user && STAFF_ROLES.includes(user.role)),
         isStudent: user?.role === 'STUDENT',
+        hasRole: (...roles) => Boolean(user && (user.role === 'SUPER_ADMIN' || roles.includes(user.role))),
         sessionRevokedMessage,
         clearRevokedMessage: () => setSessionRevokedMessage(''),
       }}

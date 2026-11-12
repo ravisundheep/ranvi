@@ -5,7 +5,17 @@ const { sendSuccess, sendError } = require('../utils/responseHelper');
 const getPublishedUpdates = async (req, res) => {
   try {
     const limit = parseInt(req.query.limit, 10) || 20;
-    const updates = await LatestUpdate.find({ status: 'PUBLISHED' })
+    const { category, isJobAlert } = req.query;
+    const query = { status: 'PUBLISHED' };
+
+    if (category && category !== 'ALL') {
+      query.category = category.toUpperCase();
+    }
+    if (isJobAlert !== undefined) {
+      query.isJobAlert = isJobAlert === 'true';
+    }
+
+    const updates = await LatestUpdate.find(query)
       .sort({ isPinned: -1, displayOrder: 1, publishedAt: -1 })
       .limit(limit)
       .lean();
@@ -35,16 +45,28 @@ const getUpdateById = async (req, res) => {
 // Admin: Get all updates with search & pagination
 const getAdminUpdates = async (req, res) => {
   try {
-    const { search, status, page = 1, limit = 20 } = req.query;
+    const { search, status, category, isJobAlert, page = 1, limit = 20 } = req.query;
     const query = {};
 
     if (status && status !== 'ALL') {
       query.status = status;
     }
+    if (category && category !== 'ALL') {
+      query.category = category.toUpperCase();
+    }
+    if (isJobAlert !== undefined && isJobAlert !== '' && isJobAlert !== 'ALL') {
+      query.isJobAlert = isJobAlert === 'true' || isJobAlert === true;
+    }
 
     if (search && search.trim()) {
       const regex = new RegExp(search.trim(), 'i');
-      query.$or = [{ title: regex }, { description: regex }, { badgeText: regex }];
+      query.$or = [
+        { title: regex },
+        { description: regex },
+        { badgeText: regex },
+        { organization: regex },
+        { postName: regex },
+      ];
     }
 
     const pageNum = Math.max(1, parseInt(page, 10));
@@ -78,7 +100,28 @@ const getAdminUpdates = async (req, res) => {
 // Admin: Create an update
 const createUpdate = async (req, res) => {
   try {
-    const { title, description, link, imageOrAttachment, badgeText, publishedAt, status, displayOrder, isPinned } = req.body;
+    const {
+      title,
+      description,
+      link,
+      imageOrAttachment,
+      badgeText,
+      isJobAlert,
+      category,
+      organization,
+      postName,
+      vacancies,
+      qualification,
+      ageLimit,
+      applicationStartDate,
+      applicationEndDate,
+      applyOnlineUrl,
+      officialNotificationPdfUrl,
+      publishedAt,
+      status,
+      displayOrder,
+      isPinned,
+    } = req.body;
 
     if (!title || !title.trim()) {
       return sendError(res, 'Update title is required', 400);
@@ -93,6 +136,17 @@ const createUpdate = async (req, res) => {
       link: link ? link.trim() : '',
       imageOrAttachment: imageOrAttachment || '',
       badgeText: badgeText ? badgeText.trim() : 'Latest Update',
+      isJobAlert: Boolean(isJobAlert),
+      category: category ? category.toUpperCase() : 'GENERAL',
+      organization: organization ? organization.trim() : '',
+      postName: postName ? postName.trim() : '',
+      vacancies: Number(vacancies) || 0,
+      qualification: qualification ? qualification.trim() : '',
+      ageLimit: ageLimit ? ageLimit.trim() : '',
+      applicationStartDate: applicationStartDate ? new Date(applicationStartDate) : undefined,
+      applicationEndDate: applicationEndDate ? new Date(applicationEndDate) : undefined,
+      applyOnlineUrl: applyOnlineUrl ? applyOnlineUrl.trim() : '',
+      officialNotificationPdfUrl: officialNotificationPdfUrl ? officialNotificationPdfUrl.trim() : '',
       publishedAt: publishedAt ? new Date(publishedAt) : new Date(),
       status: status === 'DRAFT' ? 'DRAFT' : 'PUBLISHED',
       displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
@@ -110,7 +164,28 @@ const createUpdate = async (req, res) => {
 const updateUpdate = async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, description, link, imageOrAttachment, badgeText, publishedAt, status, displayOrder, isPinned } = req.body;
+    const {
+      title,
+      description,
+      link,
+      imageOrAttachment,
+      badgeText,
+      isJobAlert,
+      category,
+      organization,
+      postName,
+      vacancies,
+      qualification,
+      ageLimit,
+      applicationStartDate,
+      applicationEndDate,
+      applyOnlineUrl,
+      officialNotificationPdfUrl,
+      publishedAt,
+      status,
+      displayOrder,
+      isPinned,
+    } = req.body;
 
     const update = await LatestUpdate.findById(id);
     if (!update) {
@@ -122,6 +197,17 @@ const updateUpdate = async (req, res) => {
     if (link !== undefined) update.link = link ? link.trim() : '';
     if (imageOrAttachment !== undefined) update.imageOrAttachment = imageOrAttachment;
     if (badgeText !== undefined) update.badgeText = badgeText.trim();
+    if (isJobAlert !== undefined) update.isJobAlert = Boolean(isJobAlert);
+    if (category !== undefined) update.category = category.toUpperCase();
+    if (organization !== undefined) update.organization = organization.trim();
+    if (postName !== undefined) update.postName = postName.trim();
+    if (vacancies !== undefined) update.vacancies = Number(vacancies) || 0;
+    if (qualification !== undefined) update.qualification = qualification.trim();
+    if (ageLimit !== undefined) update.ageLimit = ageLimit.trim();
+    if (applicationStartDate !== undefined) update.applicationStartDate = applicationStartDate ? new Date(applicationStartDate) : null;
+    if (applicationEndDate !== undefined) update.applicationEndDate = applicationEndDate ? new Date(applicationEndDate) : null;
+    if (applyOnlineUrl !== undefined) update.applyOnlineUrl = applyOnlineUrl.trim();
+    if (officialNotificationPdfUrl !== undefined) update.officialNotificationPdfUrl = officialNotificationPdfUrl.trim();
     if (publishedAt !== undefined) update.publishedAt = new Date(publishedAt);
     if (status !== undefined) update.status = status;
     if (displayOrder !== undefined) update.displayOrder = Number(displayOrder);

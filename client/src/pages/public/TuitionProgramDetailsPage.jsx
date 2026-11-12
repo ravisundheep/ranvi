@@ -89,8 +89,8 @@ export const TuitionProgramDetailsPage = () => {
     );
   }
 
-  const currentPrice = program.fee ?? program.price ?? 0;
-  const originalPrice = program.originalPrice ?? null;
+  const currentPrice = Number(program.fee ?? program.price ?? 0) || 0;
+  const originalPrice = program.originalPrice != null ? Number(program.originalPrice) || null : null;
   const discountPercent =
     originalPrice && originalPrice > currentPrice
       ? Math.round(((originalPrice - currentPrice) / originalPrice) * 100)

@@ -316,11 +316,11 @@ export const AdminSettingsPage = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-5xl pb-24">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6 max-w-5xl">
       {/* ========================================================
           1. HEADER BAR WITH IMMEDIATE SAVE & PUBLISH ACTION
       ======================================================== */}
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-5 sm:p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -345,7 +345,7 @@ export const AdminSettingsPage = () => {
       {/* ========================================================
           2. SCROLLABLE TAB PILLS
       ======================================================== */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
+      <div className="shrink-0 flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -369,7 +369,8 @@ export const AdminSettingsPage = () => {
       {/* ========================================================
           3. TAB CONTENT CARDS
       ======================================================== */}
-      <div className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white p-5 sm:p-8 rounded-3xl border border-slate-200 shadow-xs space-y-6">
         {/* ----------------------------------------------------
             TAB 1: GENERAL & TOP ANNOUNCEMENT BAR
         ---------------------------------------------------- */}
@@ -1626,12 +1627,13 @@ export const AdminSettingsPage = () => {
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* ========================================================
           4. BOTTOM STICKY SAVE BAR
       ======================================================== */}
-      <div className="flex justify-end">
+      <div className="shrink-0 flex justify-end">
         <button
           type="button"
           onClick={handleSubmit}

@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { RanviLogo } from '../common/RanviLogo';
 import {
@@ -19,12 +19,32 @@ import {
   Menu,
   X,
   ExternalLink,
+  UserCog,
+  ClipboardCheck,
+  TrendingUp,
+  Wallet,
 } from 'lucide-react';
 
+const ROLE_PORTAL_BADGES = {
+  SUPER_ADMIN: 'SUPER ADMIN',
+  ADMIN: 'ADMIN CONTROL',
+  FACULTY: 'FACULTY PORTAL',
+  SUPPORT_STAFF: 'SUPPORT DESK',
+  FINANCE_STAFF: 'FINANCE DESK',
+};
+
 export const AdminLayout = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, hasRole } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+  const mainContentRef = useRef(null);
+
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -32,26 +52,33 @@ export const AdminLayout = () => {
   };
 
   const navItems = [
-    { name: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard },
-    { name: 'Course Management', path: '/admin/courses', icon: BookOpen },
-    { name: 'Tuition Programs', path: '/admin/tuitions', icon: GraduationCap },
-    { name: 'Enrollments & Admissions', path: '/admin/enrollments', icon: Receipt },
-    { name: 'Entrance Exam Programs', path: '/admin/entrance-exams', icon: GraduationCap },
-    { name: 'Latest Updates', path: '/admin/updates', icon: Bell },
-    { name: 'Announcements & Alerts', path: '/admin/notifications', icon: Bell },
-    { name: 'Faculty Mentors', path: '/admin/faculty', icon: Users },
-    { name: 'Recorded Lessons', path: '/admin/lessons', icon: Video },
-    { name: 'Live Classes (Zoom)', path: '/admin/live-classes', icon: Video },
-    { name: 'Mock Tests & Papers', path: '/admin/mock-tests', icon: FileCheck2 },
-    { name: 'Students & Devices', path: '/admin/students', icon: Users },
-    { name: 'Payments & Revenue', path: '/admin/payments', icon: CreditCard },
-    { name: 'Enquiries & Leads', path: '/admin/enquiries', icon: MessageSquareQuote },
-    { name: 'Website Settings', path: '/admin/settings', icon: Settings },
-    { name: 'Security Audit Logs', path: '/admin/audit-logs', icon: ShieldAlert },
+    { name: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF'] },
+    { name: 'Staff & Role Access', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Approvals Queue', path: '/admin/approvals', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
+    { name: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Tuition Programs', path: '/admin/tuitions', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Enrollments & Admissions', path: '/admin/enrollments', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT_STAFF', 'FINANCE_STAFF'] },
+    { name: 'Entrance Exam Programs', path: '/admin/entrance-exams', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Latest Updates', path: '/admin/updates', icon: Bell, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Announcements & Alerts', path: '/admin/notifications', icon: Bell, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT_STAFF'] },
+    { name: 'Faculty Mentors', path: '/admin/faculty', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Recorded Lessons', path: '/admin/lessons', icon: Video, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY'] },
+    { name: 'Live Classes (Zoom)', path: '/admin/live-classes', icon: Video, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF'] },
+    { name: 'Mock Tests & Papers', path: '/admin/mock-tests', icon: FileCheck2, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY'] },
+    { name: 'Students & Devices', path: '/admin/students', icon: Users, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT_STAFF'] },
+    { name: 'Payments & Revenue', path: '/admin/payments', icon: CreditCard, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
+    { name: 'Referral Payouts', path: '/admin/payouts', icon: Wallet, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
+    { name: 'Analytics & Reports', path: '/admin/reports', icon: TrendingUp, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
+    { name: 'Enquiries & Leads', path: '/admin/enquiries', icon: MessageSquareQuote, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT_STAFF'] },
+    { name: 'Website Settings', path: '/admin/settings', icon: Settings, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Security & Audit Logs', path: '/admin/audit-logs', icon: ShieldAlert, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
   ];
 
+  const visibleNavItems = navItems.filter((item) => hasRole(...item.roles));
+  const portalBadge = ROLE_PORTAL_BADGES[user?.role] || 'STAFF PORTAL';
+
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
+    <div className="h-screen h-dvh w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
       {/* Header */}
       <header className="h-20 shrink-0 bg-[#0B1E3D] text-white border-b border-blue-900 z-30 shadow-md">
         <div className="px-4 sm:px-6 lg:px-8 h-full flex items-center justify-between relative">
@@ -71,7 +98,7 @@ export const AdminLayout = () => {
             <Link to="/" className="flex items-center">
               <RanviLogo size="small" variant="light" />
               <span className="hidden sm:inline-block ml-3 text-[10px] font-black px-2.5 py-1 rounded-full bg-[#1769D2] text-white uppercase tracking-wider">
-                ADMIN CONTROL
+                {portalBadge}
               </span>
             </Link>
           </div>
@@ -129,7 +156,7 @@ export const AdminLayout = () => {
           {/* Scrollable Nav Area inside Sidebar */}
           <div className="flex-1 overflow-y-auto p-4 space-y-3">
             <nav className="space-y-1">
-              {navItems.map((item) => {
+              {visibleNavItems.map((item) => {
                 const Icon = item.icon;
                 return (
                   <NavLink
@@ -165,8 +192,11 @@ export const AdminLayout = () => {
         </aside>
 
         {/* Admin Content Outlet */}
-        <main className="flex-1 overflow-y-auto min-w-0 bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        <main
+          ref={mainContentRef}
+          className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto md:overflow-hidden flex flex-col bg-[#F8FAFC]"
+        >
+          <div className="max-w-7xl w-full mx-auto md:flex-1 md:min-h-0 flex flex-col p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </main>

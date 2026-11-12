@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { Link, NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
+import { useSocket } from '../../context/SocketContext';
+import { notificationService } from '../../services';
 import { DeviceRevokedBanner } from '../common/DeviceRevokedBanner';
 import { RanviLogo } from '../common/RanviLogo';
 import {
@@ -17,12 +19,86 @@ import {
   ShieldCheck,
   ExternalLink,
   Award,
+  Wallet,
+  Bell,
+  CheckCheck,
 } from 'lucide-react';
 
 export const StudentLayout = () => {
   const { user, logout } = useAuth();
+  const { subscribe } = useSocket();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const notifRef = useRef(null);
+  const mainContentRef = useRef(null);
   const navigate = useNavigate();
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    if (mainContentRef.current) {
+      mainContentRef.current.scrollTo({ top: 0, behavior: 'auto' });
+    }
+  }, [pathname]);
+
+  const fetchNotifications = async () => {
+    try {
+      const res = await notificationService.getMyNotifications();
+      if (res?.success && Array.isArray(res.data)) {
+        setNotifications(res.data);
+      }
+    } catch {
+      // Silent fail if unauthenticated/offline
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const unsub1 = subscribe('enrollment_changed', fetchNotifications);
+    const unsub2 = subscribe('live_classes:updated', fetchNotifications);
+    return () => {
+      unsub1();
+      unsub2();
+    };
+  }, [subscribe]);
+
+  useEffect(() => {
+    const handleOutside = (e) => {
+      if (notifRef.current && !notifRef.current.contains(e.target)) {
+        setNotifOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleOutside);
+    return () => document.removeEventListener('mousedown', handleOutside);
+  }, []);
+
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
+
+  const handleMarkAllRead = async () => {
+    try {
+      await notificationService.markAsRead('all');
+      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleNotifClick = async (item) => {
+    if (!item.isRead) {
+      try {
+        await notificationService.markAsRead(item._id);
+        setNotifications((prev) =>
+          prev.map((n) => (n._id === item._id ? { ...n, isRead: true } : n))
+        );
+      } catch {
+        // ignore
+      }
+    }
+    setNotifOpen(false);
+    if (item.link) {
+      navigate(item.link);
+    }
+  };
 
   const handleLogout = async () => {
     await logout();
@@ -36,12 +112,13 @@ export const StudentLayout = () => {
     { name: 'My Enrollments & Receipts', path: '/student/enrollments', icon: Receipt },
     { name: 'Live Classes (Zoom)', path: '/student/live-classes', icon: Video },
     { name: 'Online Mock Tests', path: '/student/mock-tests', icon: FileCheck2 },
+    { name: 'Wallet & Referrals', path: '/student/wallet', icon: Wallet },
     { name: 'Payment History', path: '/student/payments', icon: Receipt },
     { name: 'Profile & Device', path: '/student/profile', icon: User },
   ];
 
   return (
-    <div className="h-screen w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
+    <div className="h-screen h-dvh w-full flex flex-col bg-[#F8FAFC] overflow-hidden">
       <DeviceRevokedBanner />
 
       {/* Top Header */}
@@ -78,6 +155,96 @@ export const StudentLayout = () => {
             >
               Public Website <ExternalLink className="w-3.5 h-3.5" />
             </Link>
+
+            {/* Notification Bell Dropdown */}
+            <div className="relative" ref={notifRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setNotifOpen((o) => !o);
+                  if (!notifOpen) fetchNotifications();
+                }}
+                aria-label="Notifications"
+                className="relative p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-[#12356B] transition-colors"
+              >
+                <Bell className="w-4 h-4" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-rose-500 text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {notifOpen && (
+                <div className="absolute right-0 mt-2 w-80 sm:w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden z-50">
+                  <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70">
+                    <span className="text-xs font-black text-[#12356B] uppercase tracking-wider">
+                      Notifications {unreadCount > 0 ? `(${unreadCount} new)` : ''}
+                    </span>
+                    {unreadCount > 0 && (
+                      <button
+                        type="button"
+                        onClick={handleMarkAllRead}
+                        className="text-[11px] font-bold text-[#1769D2] hover:underline inline-flex items-center gap-1"
+                      >
+                        <CheckCheck className="w-3.5 h-3.5" /> Mark all read
+                      </button>
+                    )}
+                  </div>
+                  <div className="max-h-80 overflow-y-auto divide-y divide-slate-100">
+                    {notifications.length === 0 ? (
+                      <div className="p-6 text-center text-xs text-slate-500">
+                        No personal notifications yet. Check{' '}
+                        <Link
+                          to="/notifications"
+                          onClick={() => setNotifOpen(false)}
+                          className="text-[#1769D2] font-bold hover:underline"
+                        >
+                          Job Alerts & Updates
+                        </Link>
+                        .
+                      </div>
+                    ) : (
+                      notifications.map((n) => (
+                        <button
+                          key={n._id}
+                          type="button"
+                          onClick={() => handleNotifClick(n)}
+                          className={`w-full text-left px-4 py-3 hover:bg-slate-50 transition-colors ${
+                            !n.isRead ? 'bg-blue-50/50' : ''
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-bold text-[#0B1E3D] line-clamp-1">{n.title}</p>
+                            {!n.isRead && (
+                              <span className="w-2 h-2 rounded-full bg-[#1769D2] shrink-0 mt-1"></span>
+                            )}
+                          </div>
+                          {n.message && (
+                            <p className="text-[11px] text-slate-600 mt-0.5 line-clamp-2">{n.message}</p>
+                          )}
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            {new Date(n.createdAt).toLocaleString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </p>
+                        </button>
+                      ))
+                    )}
+                  </div>
+                  <Link
+                    to="/notifications"
+                    onClick={() => setNotifOpen(false)}
+                    className="block text-center py-2.5 text-xs font-bold text-[#12356B] bg-slate-50 hover:bg-slate-100 border-t border-slate-100"
+                  >
+                    View Public Job Alerts &amp; Announcements
+                  </Link>
+                </div>
+              )}
+            </div>
 
             <div className="flex items-center gap-2.5 pl-3 border-l border-slate-200">
               <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#1976D2] to-[#0D47A1] text-white flex items-center justify-center font-bold text-xs shadow-xs ring-2 ring-blue-100">
@@ -167,9 +334,12 @@ export const StudentLayout = () => {
           </div>
         </aside>
 
-        {/* Scrollable Main Content on the Right */}
-        <main className="flex-1 overflow-y-auto min-w-0 bg-[#F8FAFC]">
-          <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8">
+        {/* Fixed Header/Shell Main Content Area; pages handle card-section vertical scroll */}
+        <main
+          ref={mainContentRef}
+          className="flex-1 h-full min-h-0 min-w-0 overflow-y-auto md:overflow-hidden flex flex-col bg-[#F8FAFC]"
+        >
+          <div className="max-w-7xl w-full mx-auto md:flex-1 md:min-h-0 flex flex-col p-4 sm:p-6 lg:p-8">
             <Outlet />
           </div>
         </main>

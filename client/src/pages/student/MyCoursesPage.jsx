@@ -34,8 +34,8 @@ export const MyCoursesPage = () => {
   }, [fetchCourses]));
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             My Enrolled Courses
@@ -52,6 +52,7 @@ export const MyCoursesPage = () => {
         </Link>
       </div>
 
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       {loading ? (
         <div className="py-16 text-center">
           <div className="w-8 h-8 border-4 border-[#1769D2] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
@@ -72,7 +73,13 @@ export const MyCoursesPage = () => {
                 />
                 <div className="absolute top-3 left-3">
                   <span className="bg-[#12356B] text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
-                    {course?.division === 'BANKERS_PATH' ? "Banker's Path" : 'Competitive Exam'}
+                    {course?.division === 'BANKERS_PATH'
+                      ? "Banker's Path"
+                      : course?.division === 'TUITIONS'
+                      ? 'Tuitions & Coaching'
+                      : course?.division === 'ENTRANCE_EXAMS'
+                      ? 'Entrance Exam'
+                      : 'Competitive Exam'}
                   </span>
                 </div>
               </div>
@@ -117,6 +124,7 @@ export const MyCoursesPage = () => {
           </Link>
         </div>
       )}
+      </div>
     </div>
   );
 };

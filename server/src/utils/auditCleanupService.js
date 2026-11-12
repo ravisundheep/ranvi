@@ -70,9 +70,11 @@ const cleanupExpiredAuditLogs = async (options = {}) => {
     const timezone = options.timezone || (await getTimezone());
     const startOfDay = options.startOfDay || getStartOfDayInTimezone(timezone);
 
-    // Strictly target the AuditLog collection ONLY
+    // Strictly purge ONLY volatile non-immutable AuditLog entries before start-of-day.
+    // Financial, Staff/RBAC, Payment, Enrollment, and Suspension logs (isImmutable: true) are preserved permanently.
     const result = await AuditLog.deleteMany({
       createdAt: { $lt: startOfDay },
+      isImmutable: { $ne: true },
     });
 
     if (result.deletedCount > 0) {

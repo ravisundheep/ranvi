@@ -4,12 +4,16 @@ const env = require('../config/env');
 
 let io = null;
 
-const allowedOrigins = [
-  env.CLIENT_ORIGIN,
-  'http://localhost:5173',
-  'http://localhost:3000',
-  'http://127.0.0.1:5173',
-].filter(Boolean).map(o => o.replace(/\/+$/, ''));
+const allowedOrigins = Array.from(
+  new Set([
+    ...(env.ALLOWED_ORIGINS || []),
+    ...(env.NODE_ENV !== 'production'
+      ? ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173']
+      : []),
+  ])
+);
+
+const STAFF_ROLES = ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF'];
 
 const initSocket = (httpServer) => {
   io = new Server(httpServer, {
@@ -19,13 +23,13 @@ const initSocket = (httpServer) => {
         const cleanOrigin = origin.replace(/\/+$/, '');
         const isAllowed =
           allowedOrigins.includes(cleanOrigin) ||
-          cleanOrigin.endsWith('.vercel.app') ||
+          (env.ALLOW_VERCEL_PREVIEWS && cleanOrigin.endsWith('.vercel.app')) ||
           env.NODE_ENV !== 'production';
 
         if (isAllowed) {
           callback(null, true);
         } else {
-          callback(null, true); // Permissive in dev to ensure reliable socket connectivity
+          callback(new Error(`Socket CORS rejected origin: ${origin}`));
         }
       },
       credentials: true,
@@ -67,12 +71,20 @@ const initSocket = (httpServer) => {
       if (['SUPER_ADMIN', 'ADMIN'].includes(role)) {
         socket.join('admin');
       }
+      if (STAFF_ROLES.includes(role)) {
+        socket.join(`staff:${role}`);
+      }
     }
 
-    // Explicit room registration from client
+    // Explicit room registration from client (enforced identity ownership)
     socket.on('register_student', (studentId) => {
-      if (studentId) {
-        socket.join(`student:${studentId}`);
+      const authedUserId = socket.user && (socket.user.id || socket.user._id);
+      if (
+        studentId &&
+        authedUserId &&
+        String(authedUserId) === String(studentId)
+      ) {
+        socket.join(`student:${authedUserId}`);
       }
     });
 

@@ -332,8 +332,8 @@ export const AdminQuestionsPage = () => {
   }, [questions, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 flex items-center justify-between">
         <Link
           to="/admin/mock-tests"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#12356B]"
@@ -342,7 +342,7 @@ export const AdminQuestionsPage = () => {
         </Link>
       </div>
 
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Question Bank ({questions.length} MCQs)
@@ -373,7 +373,7 @@ export const AdminQuestionsPage = () => {
 
       {/* Search Toolbar */}
       {questions.length > 0 && (
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
           <div className="relative min-w-[240px] sm:min-w-[320px]">
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -402,7 +402,7 @@ export const AdminQuestionsPage = () => {
       )}
 
       {/* Question List */}
-      <div className="space-y-4">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1 space-y-4">
         {questions.length === 0 && !loading && (
           <div className="text-center py-12 bg-white rounded-3xl border border-slate-200">
             <HelpCircle className="w-12 h-12 text-slate-300 mx-auto mb-2" />

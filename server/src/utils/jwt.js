@@ -39,9 +39,33 @@ const verifyRefreshToken = (token) => {
   }
 };
 
+const generateMediaToken = (relativePath, userId = 'public') => {
+  return jwt.sign(
+    {
+      purpose: 'MEDIA_ACCESS',
+      relativePath,
+      userId: String(userId),
+    },
+    env.JWT_ACCESS_SECRET,
+    { expiresIn: '2h' }
+  );
+};
+
+const verifyMediaToken = (token) => {
+  try {
+    const decoded = jwt.verify(token, env.JWT_ACCESS_SECRET);
+    if (!decoded || decoded.purpose !== 'MEDIA_ACCESS') return null;
+    return decoded;
+  } catch (err) {
+    return null;
+  }
+};
+
 module.exports = {
   generateAccessToken,
   generateRefreshToken,
   verifyAccessToken,
   verifyRefreshToken,
+  generateMediaToken,
+  verifyMediaToken,
 };

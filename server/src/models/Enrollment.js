@@ -62,6 +62,21 @@ const EnrollmentSchema = new mongoose.Schema(
       trim: true,
       default: 'Morning Batch',
     },
+    parentName: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    studentSchool: {
+      type: String,
+      trim: true,
+      default: '',
+    },
+    address: {
+      type: String,
+      trim: true,
+      default: '',
+    },
     modeOfLearning: {
       type: String,
       enum: ['ONLINE', 'OFFLINE', 'HYBRID', 'BOTH'],

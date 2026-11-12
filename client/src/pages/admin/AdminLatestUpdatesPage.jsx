@@ -126,7 +126,7 @@ export const AdminLatestUpdatesPage = () => {
   // Toggle Status
   const handleToggleStatus = async (id) => {
     try {
-      const res = await latestUpdateService.toggleStatus(id);
+      const res = await latestUpdateService.toggleUpdateStatus(id);
       if (res?.success) {
         success(`Update status changed to ${res.data?.status}`);
         fetchUpdates();
@@ -151,9 +151,9 @@ export const AdminLatestUpdatesPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
             Home Page Latest Updates Management
@@ -173,7 +173,7 @@ export const AdminLatestUpdatesPage = () => {
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-col sm:flex-row gap-3 items-center justify-between">
         <div className="relative w-full sm:w-80">
           <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
           <input
@@ -204,7 +204,8 @@ export const AdminLatestUpdatesPage = () => {
       </div>
 
       {/* Updates Table */}
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading updates...</p>
@@ -316,6 +317,7 @@ export const AdminLatestUpdatesPage = () => {
           </div>
         </div>
       )}
+      </div>
 
       {/* Modal for Create / Edit */}
       {modalOpen && (

@@ -167,8 +167,8 @@ export const AdminLiveClassesPage = () => {
   }, [classes, statusFilter, searchQuery]);
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Live Zoom Class Management
@@ -186,7 +186,7 @@ export const AdminLiveClassesPage = () => {
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           {/* Status Filter */}
           <select
@@ -242,7 +242,8 @@ export const AdminLiveClassesPage = () => {
       </div>
 
       {/* Classes Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
@@ -317,6 +318,7 @@ export const AdminLiveClassesPage = () => {
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {/* Schedule Live Class Modal */}

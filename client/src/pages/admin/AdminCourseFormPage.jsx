@@ -82,6 +82,7 @@ export const AdminCourseFormPage = () => {
         topics: ['Topic 1', 'Topic 2'],
       },
     ],
+    subscriptionPlans: [],
   });
 
   useEffect(() => {
@@ -120,6 +121,7 @@ export const AdminCourseFormPage = () => {
               syllabus: c.syllabus?.length > 0 ? c.syllabus : [
                 { title: 'Module 1: Fundamentals', description: '', topics: ['Topic 1'] }
               ],
+              subscriptionPlans: Array.isArray(c.subscriptionPlans) ? c.subscriptionPlans : [],
             });
           }
         } else if (catRes.data?.length > 0) {
@@ -156,6 +158,39 @@ export const AdminCourseFormPage = () => {
       }));
       setCustomStateInput('');
     }
+  };
+
+  const handleAddSubscriptionPlan = () => {
+    setFormData((prev) => ({
+      ...prev,
+      subscriptionPlans: [
+        ...(prev.subscriptionPlans || []),
+        {
+          durationMonths: 3,
+          price: prev.fee || 3999,
+          originalPrice: prev.originalPrice || 5999,
+          label: '3 Months Access',
+        },
+      ],
+    }));
+  };
+
+  const handleRemoveSubscriptionPlan = (index) => {
+    setFormData((prev) => ({
+      ...prev,
+      subscriptionPlans: (prev.subscriptionPlans || []).filter((_, i) => i !== index),
+    }));
+  };
+
+  const handleSubscriptionPlanChange = (index, field, value) => {
+    setFormData((prev) => {
+      const updated = [...(prev.subscriptionPlans || [])];
+      updated[index] = { ...updated[index], [field]: value };
+      if (field === 'durationMonths' && !updated[index].labelManual) {
+        updated[index].label = `${value} Months Access`;
+      }
+      return { ...prev, subscriptionPlans: updated };
+    });
   };
 
   const handleThumbnailUpload = async (e) => {
@@ -246,8 +281,8 @@ export const AdminCourseFormPage = () => {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl pb-24">
-      <div className="flex items-center justify-between">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6 max-w-4xl">
+      <div className="shrink-0 flex items-center justify-between">
         <Link
           to="/admin/courses"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#12356B]"
@@ -256,7 +291,8 @@ export const AdminCourseFormPage = () => {
         </Link>
       </div>
 
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-6">
         <div className="border-b border-slate-100 pb-4">
           <h1 className="text-2xl font-extrabold text-[#0B1E3D] font-heading">
             {isEditMode ? 'Edit Course Program' : 'Create & Publish New Course Program'}
@@ -291,6 +327,7 @@ export const AdminCourseFormPage = () => {
                 <option value="BANKERS_PATH">Banker's Path</option>
                 <option value="COMPETITIVE_EXAMS">Competitive Exams</option>
                 <option value="ENTRANCE_EXAMS">Entrance Exams</option>
+                <option value="TUITIONS">Tuitions & Coaching</option>
               </select>
             </div>
           </div>
@@ -541,6 +578,98 @@ export const AdminCourseFormPage = () => {
             </div>
           </div>
 
+          {/* Subscription Duration Plans */}
+          <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="text-xs font-black uppercase text-[#12356B] tracking-wider block">
+                  Subscription Duration Plans (Optional)
+                </label>
+                <p className="text-[11px] text-slate-500">
+                  Allow students to select duration-based subscriptions (e.g. 3 Months, 6 Months, 1 Year)
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAddSubscriptionPlan}
+                className="inline-flex items-center gap-1.5 bg-[#1769D2] hover:bg-blue-700 text-white text-xs font-bold px-3 py-1.5 rounded-xl shadow-xs"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Duration Plan
+              </button>
+            </div>
+
+            {formData.subscriptionPlans?.length === 0 ? (
+              <p className="text-xs text-slate-400 italic">No duration plans configured. Course uses single flat enrolment fee.</p>
+            ) : (
+              <div className="space-y-2.5">
+                {formData.subscriptionPlans.map((plan, planIdx) => (
+                  <div key={planIdx} className="p-3 bg-white rounded-xl border border-slate-200 flex flex-wrap items-center gap-3 text-xs">
+                    <div className="w-28">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Duration</label>
+                      <select
+                        value={plan.durationMonths}
+                        onChange={(e) => handleSubscriptionPlanChange(planIdx, 'durationMonths', Number(e.target.value))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 font-bold bg-white"
+                      >
+                        <option value={3}>3 Months</option>
+                        <option value={6}>6 Months</option>
+                        <option value={12}>12 Months (1 Year)</option>
+                      </select>
+                    </div>
+
+                    <div className="flex-1 min-w-[140px]">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Plan Label</label>
+                      <input
+                        type="text"
+                        value={plan.label}
+                        onChange={(e) => {
+                          handleSubscriptionPlanChange(planIdx, 'label', e.target.value);
+                          handleSubscriptionPlanChange(planIdx, 'labelManual', true);
+                        }}
+                        placeholder="e.g. 3 Months Plan"
+                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 font-semibold"
+                      />
+                    </div>
+
+                    <div className="w-24">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Price (₹) *</label>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={plan.price}
+                        onChange={(e) => handleSubscriptionPlanChange(planIdx, 'price', Number(e.target.value))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200 font-bold text-[#12356B]"
+                      />
+                    </div>
+
+                    <div className="w-24">
+                      <label className="block text-[10px] font-bold text-slate-500 uppercase mb-0.5">Original (₹)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={plan.originalPrice || ''}
+                        onChange={(e) => handleSubscriptionPlanChange(planIdx, 'originalPrice', Number(e.target.value))}
+                        className="w-full px-2 py-1.5 rounded-lg border border-slate-200"
+                      />
+                    </div>
+
+                    <div className="pt-3">
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveSubscriptionPlan(planIdx)}
+                        className="text-slate-400 hover:text-rose-500 p-1"
+                        title="Remove Plan"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
           {/* Row 4: Batch Schedule */}
           <div>
             <label className="block font-bold text-slate-700 mb-1">Live Batch Timing & Schedule</label>
@@ -770,6 +899,7 @@ export const AdminCourseFormPage = () => {
             </button>
           </div>
         </form>
+      </div>
       </div>
     </div>
   );

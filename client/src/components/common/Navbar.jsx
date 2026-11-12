@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Link, NavLink, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useSiteSettings } from '../../context/SiteSettingsContext';
 import { RanviLogo } from './RanviLogo';
@@ -13,30 +13,71 @@ import {
   LayoutDashboard,
   Sparkles,
   BookOpen,
-  PlayCircle,
   GraduationCap,
   Video,
   FileCheck2,
   Receipt,
-  Award,
   CreditCard,
   MessageSquareQuote,
-  MessageSquare,
   Settings,
   ShieldAlert,
   LogIn,
   UserPlus,
-  ShieldCheck,
-  ExternalLink,
+  Landmark,
+  Trophy,
+  Users,
 } from 'lucide-react';
+
+// Programs dropdown items (single source of truth for desktop + mobile)
+const programLinks = [
+  {
+    name: "Banker's Path",
+    path: '/bankers-path',
+    description: 'JAIIB, CAIIB & banking exam prep',
+    icon: Landmark,
+  },
+  {
+    name: 'Competitive Exams',
+    path: '/competitive-exams',
+    description: 'IBPS, SBI & other govt. exams',
+    icon: Trophy,
+  },
+  {
+    name: 'Entrance Exams',
+    path: '/entrance-exams',
+    description: 'Focused entrance test coaching',
+    icon: GraduationCap,
+  },
+  {
+    name: 'Tuitions',
+    path: '/tuition-programs',
+    description: 'Subject-wise classes & tutoring',
+    icon: Users,
+  },
+];
+
+// Links shown before / after the Programs dropdown
+const linksBeforePrograms = [{ name: 'Home', path: '/' }];
+const linksAfterPrograms = [
+  { name: 'Online Classes', path: '/online-classes' },
+  { name: 'Recorded Classes', path: '/recorded-classes' },
+  { name: 'Mock Tests', path: '/mock-tests' },
+  { name: 'About', path: '/about' },
+  { name: 'Contact', path: '/contact' },
+];
 
 export const Navbar = () => {
   const { user, isAuthenticated, isAdmin, isStudent, logout } = useAuth();
   const { settings } = useSiteSettings();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
+  const [programsOpen, setProgramsOpen] = useState(false); // desktop dropdown
+  const [mobileProgramsOpen, setMobileProgramsOpen] = useState(false); // mobile accordion
   const profileRef = useRef(null);
+  const programsRef = useRef(null);
+  const programsCloseTimer = useRef(null);
   const navigate = useNavigate();
+  const location = useLocation();
 
   const topAnnouncement = settings?.topAnnouncement || {
     badgeText: 'Admissions Open 2026',
@@ -46,20 +87,60 @@ export const Navbar = () => {
   };
   const stripText = settings?.bannerStripText || settings?.supportingMessage || 'Learn • Excel • Achieve';
 
-  // Close profile dropdown when clicking outside
+  // Highlight "Programs" when any program page is active
+  const isProgramsActive = programLinks.some(
+    (p) => location.pathname === p.path || location.pathname.startsWith(`${p.path}/`)
+  );
+
+  // Close everything on route change
+  useEffect(() => {
+    setProgramsOpen(false);
+    setProfileDropdownOpen(false);
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
+
+  // Keep the Programs accordion open on mobile if a program page is active
+  useEffect(() => {
+    if (mobileMenuOpen && isProgramsActive) setMobileProgramsOpen(true);
+  }, [mobileMenuOpen, isProgramsActive]);
+
+  // Close dropdowns when clicking outside / pressing Escape
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (profileRef.current && !profileRef.current.contains(event.target)) {
         setProfileDropdownOpen(false);
       }
+      if (programsRef.current && !programsRef.current.contains(event.target)) {
+        setProgramsOpen(false);
+      }
+    };
+    const handleEscape = (event) => {
+      if (event.key === 'Escape') {
+        setProgramsOpen(false);
+        setProfileDropdownOpen(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('touchstart', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+      clearTimeout(programsCloseTimer.current);
     };
   }, []);
+
+  // Hover handlers with a short close delay so the menu doesn't flicker
+  const openPrograms = () => {
+    clearTimeout(programsCloseTimer.current);
+    setProgramsOpen(true);
+    setProfileDropdownOpen(false);
+  };
+  const scheduleClosePrograms = () => {
+    clearTimeout(programsCloseTimer.current);
+    programsCloseTimer.current = setTimeout(() => setProgramsOpen(false), 120);
+  };
 
   const handleLogout = async () => {
     setProfileDropdownOpen(false);
@@ -68,17 +149,13 @@ export const Navbar = () => {
     navigate('/login');
   };
 
-  const navLinks = [
-    { name: 'Home', path: '/' },
-    { name: "Banker's Path", path: '/bankers-path' },
-    { name: 'Competitive Exams', path: '/competitive-exams' },
-    { name: 'Entrance Exams', path: '/entrance-exams' },
-    { name: 'Online Classes', path: '/online-classes' },
-    { name: 'Recorded Classes', path: '/recorded-classes' },
-    { name: 'Mock Tests', path: '/mock-tests' },
-    { name: 'About', path: '/about' },
-    { name: 'Contact', path: '/contact' },
-  ];
+  // Shared desktop link styling (nowrap keeps the bar on a single row)
+  const desktopLinkClass = (active) =>
+    `px-2.5 2xl:px-3.5 py-2 text-sm font-bold rounded-xl whitespace-nowrap transition-all duration-150 ${
+      active
+        ? 'text-[#1769D2] bg-[#EAF3FF]'
+        : 'text-[#17243A] hover:text-[#12356B] hover:bg-slate-100/80'
+    }`;
 
   // Helper: Role Configuration
   const getRoleConfig = (role) => {
@@ -153,7 +230,7 @@ export const Navbar = () => {
 
       {/* Main Header Container */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16 sm:h-18 relative">
+        <div className="flex items-center justify-between gap-3 h-16 sm:h-18 relative">
           {/* 1. Mobile Menu Icon (LEFT on mobile, hidden on xl+) */}
           <div className="flex xl:hidden items-center z-20">
             <button
@@ -163,31 +240,112 @@ export const Navbar = () => {
               }}
               className="w-10 h-10 rounded-xl bg-[#0B2545] hover:bg-[#12356B] text-white flex items-center justify-center shadow-xs active:scale-95 transition-all focus:outline-none cursor-pointer"
               aria-label="Toggle Navigation Menu"
+              aria-expanded={mobileMenuOpen}
             >
               {mobileMenuOpen ? <X className="w-5 h-5 text-white" /> : <Menu className="w-5 h-5 text-white" />}
             </button>
           </div>
 
           {/* 2. Website Logo (CENTERED on mobile, LEFT on desktop) */}
-          <div className="xl:static absolute left-1/2 -translate-x-1/2 xl:translate-x-0 xl:left-auto flex items-center z-10">
+          <div className="xl:static absolute left-1/2 -translate-x-1/2 xl:translate-x-0 xl:left-auto flex items-center shrink-0 z-10">
             <Link to="/" className="flex items-center group">
               <RanviLogo size="default" />
             </Link>
           </div>
 
-          {/* 3. Desktop Navigation Links (Center on desktop, hidden on mobile) */}
-          <nav className="hidden xl:flex items-center gap-1">
-            {navLinks.map((link) => (
+          {/* 3. Desktop Navigation Links (single row, hidden on mobile) */}
+          <nav className="hidden xl:flex flex-1 items-center justify-center gap-0.5 2xl:gap-1 min-w-0">
+            {linksBeforePrograms.map((link) => (
               <NavLink
                 key={link.name}
                 to={link.path}
-                className={({ isActive }) =>
-                  `px-3 py-2 text-sm font-bold rounded-xl transition-all duration-150 ${
-                    isActive
-                      ? 'text-[#1769D2] bg-[#EAF3FF]'
-                      : 'text-[#17243A] hover:text-[#12356B] hover:bg-slate-100/80'
-                  }`
-                }
+                end={link.path === '/'}
+                className={({ isActive }) => desktopLinkClass(isActive)}
+              >
+                {link.name}
+              </NavLink>
+            ))}
+
+            {/* Programs Dropdown */}
+            <div
+              ref={programsRef}
+              className="relative"
+              onMouseEnter={openPrograms}
+              onMouseLeave={scheduleClosePrograms}
+            >
+              <button
+                type="button"
+                onClick={() => setProgramsOpen((prev) => !prev)}
+                className={`${desktopLinkClass(isProgramsActive || programsOpen)} inline-flex items-center gap-1 cursor-pointer focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1769D2]/50`}
+                aria-haspopup="menu"
+                aria-expanded={programsOpen}
+              >
+                Programs
+                <ChevronDown
+                  className={`w-3.5 h-3.5 transition-transform duration-200 ${
+                    programsOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {programsOpen && (
+                <div className="absolute left-1/2 -translate-x-1/2 top-full pt-2 z-50">
+                  <div
+                    role="menu"
+                    className="w-72 bg-white rounded-2xl shadow-2xl border border-slate-200 p-2 animate-in fade-in slide-in-from-top-2 duration-150"
+                  >
+                    {programLinks.map((item) => {
+                      const Icon = item.icon;
+                      return (
+                        <NavLink
+                          key={item.name}
+                          to={item.path}
+                          role="menuitem"
+                          onClick={() => setProgramsOpen(false)}
+                          className={({ isActive }) =>
+                            `group flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+                              isActive ? 'bg-[#EAF3FF]' : 'hover:bg-[#EAF3FF]'
+                            }`
+                          }
+                        >
+                          {({ isActive }) => (
+                            <>
+                              <span
+                                className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center transition-colors ${
+                                  isActive
+                                    ? 'bg-[#1769D2] text-white'
+                                    : 'bg-slate-100 text-[#1769D2] group-hover:bg-[#1769D2] group-hover:text-white'
+                                }`}
+                              >
+                                <Icon className="w-4 h-4" />
+                              </span>
+                              <span className="min-w-0">
+                                <span
+                                  className={`block text-sm font-bold leading-tight ${
+                                    isActive ? 'text-[#1769D2]' : 'text-[#0B1E3D] group-hover:text-[#1769D2]'
+                                  }`}
+                                >
+                                  {item.name}
+                                </span>
+                                <span className="block text-[11px] font-medium text-slate-500 mt-0.5 truncate">
+                                  {item.description}
+                                </span>
+                              </span>
+                            </>
+                          )}
+                        </NavLink>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {linksAfterPrograms.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.path}
+                className={({ isActive }) => desktopLinkClass(isActive)}
               >
                 {link.name}
               </NavLink>
@@ -195,7 +353,7 @@ export const Navbar = () => {
           </nav>
 
           {/* 4. Right Section: CTAs + Dynamic User Profile / Skeleton Avatar */}
-          <div className="flex items-center gap-2.5 sm:gap-3 z-20" ref={profileRef}>
+          <div className="flex items-center gap-2.5 sm:gap-3 shrink-0 z-20" ref={profileRef}>
             {/* Profile Section: Dynamic (Logged In) OR Skeleton Avatar (Logged Out) */}
             {isAuthenticated ? (
               /* ========================================================
@@ -203,7 +361,10 @@ export const Navbar = () => {
               ======================================================== */
               <div className="relative">
                 <button
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  onClick={() => {
+                    setProfileDropdownOpen(!profileDropdownOpen);
+                    setProgramsOpen(false);
+                  }}
                   className="flex items-center gap-2 sm:gap-2.5 p-1 sm:px-3 sm:py-2 rounded-2xl sm:rounded-2xl hover:bg-slate-100 transition-all border border-transparent hover:border-slate-200 active:scale-95 focus:outline-none"
                   aria-label="User Profile Menu"
                 >
@@ -425,7 +586,7 @@ export const Navbar = () => {
                 {/* Desktop Quick Login Button */}
                 <Link
                   to="/login"
-                  className="hidden md:inline-flex items-center gap-2 bg-[#0B1E3D] hover:bg-[#12356B] text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95"
+                  className="hidden md:inline-flex items-center gap-2 whitespace-nowrap bg-[#0B1E3D] hover:bg-[#12356B] text-white px-4 py-2.5 rounded-xl text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95"
                 >
                   <LogIn className="w-4 h-4 text-[#F4B942]" />
                   <span>Portal Login</span>
@@ -433,7 +594,10 @@ export const Navbar = () => {
 
                 {/* Default Avatar Icon - Solid Purple circle matching reference image */}
                 <button
-                  onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+                  onClick={() => {
+                    setProfileDropdownOpen(!profileDropdownOpen);
+                    setProgramsOpen(false);
+                  }}
                   className="w-10 h-10 rounded-full bg-[#5C45B3] hover:bg-[#4E37A4] text-white flex items-center justify-center relative transition-all duration-200 shadow-sm focus:outline-none active:scale-95 cursor-pointer"
                   title="Guest Profile / Account Options"
                   aria-label="Account Menu"
@@ -554,7 +718,71 @@ export const Navbar = () => {
 
           {/* Navigation Links */}
           <div className="space-y-1">
-            {navLinks.map((link) => (
+            {linksBeforePrograms.map((link) => (
+              <NavLink
+                key={link.name}
+                to={link.path}
+                end={link.path === '/'}
+                onClick={() => setMobileMenuOpen(false)}
+                className={({ isActive }) =>
+                  `block px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold transition-colors ${
+                    isActive
+                      ? 'bg-[#EAF3FF] text-[#1769D2]'
+                      : 'text-slate-800 hover:bg-slate-50'
+                  }`
+                }
+              >
+                {link.name}
+              </NavLink>
+            ))}
+
+            {/* Mobile Programs Accordion */}
+            <div>
+              <button
+                type="button"
+                onClick={() => setMobileProgramsOpen((prev) => !prev)}
+                aria-expanded={mobileProgramsOpen}
+                className={`w-full flex items-center justify-between px-4 py-2.5 rounded-xl text-sm sm:text-base font-bold transition-colors cursor-pointer ${
+                  isProgramsActive
+                    ? 'bg-[#EAF3FF] text-[#1769D2]'
+                    : 'text-slate-800 hover:bg-slate-50'
+                }`}
+              >
+                <span>Programs</span>
+                <ChevronDown
+                  className={`w-4 h-4 transition-transform duration-200 ${
+                    mobileProgramsOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {mobileProgramsOpen && (
+                <div className="mt-1 ml-4 pl-3 border-l-2 border-[#1769D2]/20 space-y-0.5 animate-in fade-in slide-in-from-top-1 duration-150">
+                  {programLinks.map((item) => {
+                    const Icon = item.icon;
+                    return (
+                      <NavLink
+                        key={item.name}
+                        to={item.path}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className={({ isActive }) =>
+                          `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-bold transition-colors ${
+                            isActive
+                              ? 'bg-[#EAF3FF] text-[#1769D2]'
+                              : 'text-slate-700 hover:bg-slate-50'
+                          }`
+                        }
+                      >
+                        <Icon className="w-4 h-4 text-[#1769D2] shrink-0" />
+                        <span>{item.name}</span>
+                      </NavLink>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {linksAfterPrograms.map((link) => (
               <NavLink
                 key={link.name}
                 to={link.path}

@@ -6,9 +6,10 @@ const Payment = require('../models/Payment');
 const Entitlement = require('../models/Entitlement');
 const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
-const { razorpayInstance, verifySignature } = require('../config/razorpay');
+const env = require('../config/env');
+const { razorpayInstance, isRazorpayConfigured, verifySignature } = require('../config/razorpay');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
-const { emitEnrollmentChange } = require('../utils/socketService');
+const { emitEnrollmentChange, emitNewOrderPlaced, emitAdminStatsUpdate } = require('../utils/socketService');
 
 // Student: Initiate enrollment & create gateway checkout intent
 const createEnrollmentIntent = async (req, res) => {
@@ -16,14 +17,22 @@ const createEnrollmentIntent = async (req, res) => {
     const studentId = req.user._id;
     const {
       courseId,
-      preferredBatch = 'Morning Batch',
+      preferredBatch,
+      batchTiming,
       modeOfLearning = 'ONLINE',
       educationQualification = '',
       city = '',
       state = '',
       phone = '',
       name = '',
+      parentName = '',
+      studentSchool = '',
+      address = '',
+      notes = '',
+      durationMonths = null,
     } = req.body;
+
+    const resolvedBatch = preferredBatch || batchTiming || 'Morning Batch';
 
     if (!courseId) {
       return sendError(res, 'Course/Program ID is required', 400);
@@ -46,11 +55,14 @@ const createEnrollmentIntent = async (req, res) => {
       return sendError(res, 'Registration is full for this program. No seats available.', 400);
     }
 
+    const now = new Date();
+
     // Check duplicate active enrollment or active entitlement
     const existingEnrollment = await Enrollment.findOne({
       studentId,
       courseId,
       enrollmentStatus: { $in: ['ENROLLED', 'ACTIVE'] },
+      $or: [{ validUntil: { $gte: now } }, { validUntil: null }, { validUntil: { $exists: false } }],
     });
 
     const existingEntitlement = await Entitlement.findOne({
@@ -58,7 +70,7 @@ const createEnrollmentIntent = async (req, res) => {
       itemId: courseId,
       isActive: true,
       status: { $in: ['ACTIVE', 'ENROLLED'] },
-      validUntil: { $gte: new Date() },
+      validUntil: { $gte: now },
     });
 
     if (existingEnrollment || existingEntitlement) {
@@ -70,12 +82,26 @@ const createEnrollmentIntent = async (req, res) => {
 
     const studentName = (name || req.user.name || 'Student').trim();
     const studentEmail = (req.user.email || '').trim().toLowerCase();
-    const studentPhone = (phone || req.user.phone || '9999999999').trim();
+    const studentPhone = (phone || req.user.phone || '').trim();
 
-    const feeAmount = course.fee;
-    const finalAmount = course.fee;
-    const discountAmount = course.originalPrice && course.originalPrice > course.fee
-      ? course.originalPrice - course.fee
+    if (!studentPhone) {
+      return sendError(res, 'Phone number is required for enrollment', 400);
+    }
+
+    let feeAmount = course.fee;
+    let finalAmount = course.fee;
+    let resolvedDurationMonths = durationMonths ? Number(durationMonths) : null;
+
+    if (resolvedDurationMonths && Array.isArray(course.subscriptionPlans)) {
+      const matchedPlan = course.subscriptionPlans.find((p) => p.durationMonths === resolvedDurationMonths);
+      if (matchedPlan) {
+        feeAmount = matchedPlan.price;
+        finalAmount = matchedPlan.price;
+      }
+    }
+
+    const discountAmount = course.originalPrice && course.originalPrice > feeAmount
+      ? course.originalPrice - feeAmount
       : 0;
 
     const enrollmentId = `ENR-${Date.now().toString().slice(-6)}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
@@ -95,22 +121,28 @@ const createEnrollmentIntent = async (req, res) => {
         razorpayOrderId: `free_${Date.now()}_${Math.random().toString(36).substring(7)}`,
         status: 'PAID',
         receiptNumber,
+        durationMonths: resolvedDurationMonths,
       });
 
-      const entitlement = await Entitlement.create({
-        studentId,
-        itemType: 'COURSE',
-        itemId: course._id,
-        itemModel: 'Course',
-        orderId: order._id,
-        validFrom: new Date(),
-        validUntil,
-        isActive: true,
-        grantedBy: 'PAYMENT',
-        grantReason: `Enrolled in ${course.title} (Free Access)`,
-      });
+      await Entitlement.findOneAndUpdate(
+        { studentId, itemId: course._id },
+        {
+          studentId,
+          itemType: 'COURSE',
+          itemId: course._id,
+          itemModel: 'Course',
+          orderId: order._id,
+          validFrom: now,
+          validUntil,
+          isActive: true,
+          status: 'ACTIVE',
+          grantedBy: 'PAYMENT',
+          grantReason: `Enrolled in ${course.title} (Free Access)`,
+        },
+        { upsert: true, new: true }
+      );
 
-      const enrollment = await Enrollment.create({
+      await Enrollment.create({
         enrollmentId,
         studentId,
         courseId: course._id,
@@ -121,19 +153,27 @@ const createEnrollmentIntent = async (req, res) => {
         educationQualification,
         city,
         state,
-        preferredBatch,
+        preferredBatch: resolvedBatch,
+        parentName,
+        studentSchool,
+        address,
+        notes,
         modeOfLearning,
         feeAmount: 0,
         discountAmount,
         finalAmount: 0,
         enrollmentStatus: 'ENROLLED',
         paymentStatus: 'PAID',
+        validFrom: now,
+        validUntil,
       });
 
-      // Update seat counts
-      await Course.findByIdAndUpdate(course._id, {
-        $inc: { enrolledStudentsCount: 1, availableSeats: -1 },
-      });
+      // Update seat counts safely
+      const courseUpdate = { $inc: { enrolledStudentsCount: 1 } };
+      if (typeof course.availableSeats === 'number' && course.availableSeats > 0) {
+        courseUpdate.$inc.availableSeats = -1;
+      }
+      await Course.findByIdAndUpdate(course._id, courseUpdate);
 
       // Student notification
       await Notification.create({
@@ -144,11 +184,12 @@ const createEnrollmentIntent = async (req, res) => {
         link: `/student/enrollments`,
       });
 
-      emitEnrollmentChange({
+      emitEnrollmentChange(studentId, {
         type: 'ENROLLMENT_COMPLETED',
         enrollmentId,
         courseTitle: course.title,
       });
+      emitAdminStatsUpdate({ reason: 'FREE_ENROLLMENT_COMPLETED' });
 
       return sendSuccess(res, 'Free enrollment confirmed successfully', {
         enrollmentId,
@@ -156,6 +197,14 @@ const createEnrollmentIntent = async (req, res) => {
         enrollmentStatus: 'ENROLLED',
         receiptNumber,
       }, 201);
+    }
+
+    if (!isRazorpayConfigured()) {
+      return sendError(
+        res,
+        'Online payment gateway is not configured. Please contact administration or configure Razorpay keys.',
+        503
+      );
     }
 
     // Paid program -> Create Gateway Order (Razorpay)
@@ -187,9 +236,10 @@ const createEnrollmentIntent = async (req, res) => {
       razorpayOrderId: razorpayOrder.id,
       status: 'PENDING',
       receiptNumber: `REC-${Date.now()}`,
+      durationMonths: resolvedDurationMonths,
     });
 
-    const enrollment = await Enrollment.create({
+    await Enrollment.create({
       enrollmentId,
       studentId,
       courseId: course._id,
@@ -200,7 +250,11 @@ const createEnrollmentIntent = async (req, res) => {
       educationQualification,
       city,
       state,
-      preferredBatch,
+      preferredBatch: resolvedBatch,
+      parentName,
+      studentSchool,
+      address,
+      notes,
       modeOfLearning,
       feeAmount,
       discountAmount,
@@ -215,7 +269,8 @@ const createEnrollmentIntent = async (req, res) => {
       razorpayOrderId: razorpayOrder.id,
       amount: finalAmount,
       currency: 'INR',
-      key: process.env.RAZORPAY_KEY_ID || 'rzp_test_ranvi2026',
+      key: env.RAZORPAY_KEY_ID,
+      keyId: env.RAZORPAY_KEY_ID,
       programTitle: course.title,
       studentName,
       studentEmail,
@@ -252,62 +307,85 @@ const verifyEnrollmentPayment = async (req, res) => {
       return sendSuccess(res, 'Enrollment already verified and active', enrollment);
     }
 
-    // Secure HMAC-SHA256 signature verification (with dev fallback support)
-    let isSignatureValid = false;
-    if (
-      razorpay_order_id.startsWith('order_dev_') ||
-      razorpay_order_id.startsWith('order_test_') ||
-      razorpay_signature === 'dev_mock_signature_verified'
-    ) {
-      isSignatureValid = true;
-    } else {
-      isSignatureValid = verifySignature(razorpay_order_id, razorpay_payment_id, razorpay_signature);
+    // Load linked Order and verify order ID binding
+    let order = null;
+    if (enrollment.orderId) {
+      order = await Order.findById(enrollment.orderId);
     }
+    if (!order) {
+      order = await Order.findOne({ razorpayOrderId: razorpay_order_id, studentId });
+    }
+    if (!order || order.razorpayOrderId !== razorpay_order_id) {
+      return sendError(res, 'Order ID mismatch. Verification rejected.', 400);
+    }
+
+    // Check duplicate payment reference reuse across different orders
+    const duplicatePayment = await Payment.findOne({ razorpayPaymentId: razorpay_payment_id });
+    if (duplicatePayment && duplicatePayment.orderId.toString() !== order._id.toString()) {
+      return sendError(res, 'Payment ID has already been applied to another order', 409);
+    }
+
+    // Strict HMAC-SHA256 signature verification (no bypasses)
+    const isSignatureValid = verifySignature(order.razorpayOrderId, razorpay_payment_id, razorpay_signature);
     if (!isSignatureValid) {
+      order.status = 'FAILED';
+      await order.save();
       await Enrollment.findByIdAndUpdate(enrollment._id, {
         enrollmentStatus: 'CANCELLED',
         paymentStatus: 'FAILED',
         notes: 'Payment verification signature mismatch',
       });
+      await AuditLog.create({
+        userId: studentId,
+        userEmail: req.user.email,
+        userRole: req.user.role,
+        action: 'ENROLLMENT_SIGNATURE_FAILED',
+        resource: 'Enrollment',
+        resourceId: enrollment._id.toString(),
+        ipAddress: req.ip || '127.0.0.1',
+        details: { enrollmentId, razorpay_order_id, razorpay_payment_id },
+      });
       return sendError(res, 'Payment verification failed: Signature mismatch', 400);
     }
 
-    // Update Order
-    let order = await Order.findOne({ razorpayOrderId: razorpay_order_id });
-    if (!order && enrollment.orderId) {
-      order = await Order.findById(enrollment.orderId);
+    const receiptNumber = order.receiptNumber || `REC-RANVI-${Date.now()}`;
+
+    // Create Payment record idempotently
+    let payment = duplicatePayment;
+    if (!payment) {
+      payment = await Payment.create({
+        orderId: order._id,
+        studentId,
+        razorpayPaymentId: razorpay_payment_id,
+        razorpayOrderId: order.razorpayOrderId,
+        razorpaySignature: razorpay_signature,
+        amount: enrollment.finalAmount,
+        currency: 'INR',
+        status: 'SUCCESS',
+        paymentMethod: 'ONLINE_GATEWAY',
+        transactionRef: razorpay_payment_id,
+      });
     }
 
-    const receiptNumber = order?.receiptNumber || `REC-RANVI-${Date.now()}`;
-
-    // Create Payment record
-    const payment = await Payment.create({
-      orderId: order ? order._id : enrollment.orderId,
-      studentId,
-      razorpayPaymentId: razorpay_payment_id,
-      razorpayOrderId: razorpay_order_id,
-      razorpaySignature: razorpay_signature,
-      amount: enrollment.finalAmount,
-      currency: 'INR',
-      status: 'SUCCESS',
-      paymentMethod: 'ONLINE_GATEWAY',
-      transactionRef: razorpay_payment_id,
-    });
-
-    if (order) {
-      order.status = 'PAID';
-      order.paymentId = payment._id;
-      await order.save();
-    }
+    order.status = 'PAID';
+    order.paymentId = payment._id;
+    await order.save();
 
     // Update Enrollment
-    const validityDays = enrollment.courseId?.validityDays || 180;
-    const validUntil = new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000);
+    const now = new Date();
+    let validUntil;
+    if (order.durationMonths && order.durationMonths > 0) {
+      validUntil = new Date(now);
+      validUntil.setMonth(validUntil.getMonth() + order.durationMonths);
+    } else {
+      const validityDays = enrollment.courseId?.validityDays || 180;
+      validUntil = new Date(now.getTime() + validityDays * 24 * 60 * 60 * 1000);
+    }
 
     enrollment.enrollmentStatus = 'ENROLLED';
     enrollment.paymentStatus = 'PAID';
     enrollment.paymentId = payment._id;
-    enrollment.validFrom = new Date();
+    enrollment.validFrom = now;
     enrollment.validUntil = validUntil;
     await enrollment.save();
 
@@ -319,8 +397,8 @@ const verifyEnrollmentPayment = async (req, res) => {
         itemType: 'COURSE',
         itemId: enrollment.courseId?._id || enrollment.courseId,
         itemModel: 'Course',
-        orderId: order?._id,
-        validFrom: new Date(),
+        orderId: order._id,
+        validFrom: now,
         validUntil,
         isActive: true,
         status: 'ACTIVE',
@@ -330,22 +408,32 @@ const verifyEnrollmentPayment = async (req, res) => {
       { upsert: true, new: true }
     );
 
-    // Update seats & counts
+    // Update seats & counts safely
     if (enrollment.courseId?._id) {
-      await Course.findByIdAndUpdate(enrollment.courseId._id, {
-        $inc: { enrolledStudentsCount: 1, availableSeats: -1 },
-      });
+      const courseUpdate = { $inc: { enrolledStudentsCount: 1 } };
+      if (typeof enrollment.courseId.availableSeats === 'number' && enrollment.courseId.availableSeats > 0) {
+        courseUpdate.$inc.availableSeats = -1;
+      }
+      await Course.findByIdAndUpdate(enrollment.courseId._id, courseUpdate);
     }
 
     // Audit log
     await AuditLog.create({
       action: 'ENROLLMENT_VERIFIED',
       resource: 'Enrollment',
+      resourceId: enrollment._id.toString(),
+      category: 'FINANCIAL',
+      isImmutable: true,
       userId: studentId,
       userEmail: req.user.email,
       userRole: req.user.role,
       ipAddress: req.ip || '127.0.0.1',
-      details: `Enrollment ${enrollmentId} verified via payment ${razorpay_payment_id}`,
+      details: {
+        enrollmentId,
+        courseId: enrollment.courseId?._id,
+        paymentId: razorpay_payment_id,
+        amount: enrollment.finalAmount,
+      },
     });
 
     // In-app Notification
@@ -357,11 +445,13 @@ const verifyEnrollmentPayment = async (req, res) => {
       link: '/student/enrollments',
     });
 
-    emitEnrollmentChange({
+    emitEnrollmentChange(studentId, {
       type: 'ENROLLMENT_VERIFIED',
       enrollmentId,
       amount: enrollment.finalAmount,
     });
+    emitNewOrderPlaced(order);
+    emitAdminStatsUpdate({ reason: 'ENROLLMENT_VERIFIED' });
 
     return sendSuccess(res, 'Payment verified and enrollment completed successfully', {
       enrollmentId,
@@ -548,6 +638,9 @@ const updateAdminEnrollmentStatus = async (req, res) => {
     await AuditLog.create({
       action: 'ENROLLMENT_STATUS_UPDATED',
       resource: 'Enrollment',
+      resourceId: enrollment._id.toString(),
+      category: 'FINANCIAL',
+      isImmutable: true,
       userId: req.user._id,
       userEmail: req.user.email,
       userRole: req.user.role,

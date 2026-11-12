@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { adminService } from '../../services';
 import { useSocket, useRealtimeEvent } from '../../context/SocketContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import {
   Users,
@@ -19,6 +20,7 @@ import {
 
 export const AdminDashboardPage = () => {
   const { isConnected } = useSocket();
+  const { user, isAdmin, hasRole } = useAuth();
   const { info: toastInfo, success: toastSuccess } = useToast();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -96,9 +98,9 @@ export const AdminDashboardPage = () => {
   const recentOrders = stats?.recentOrders || [];
 
   return (
-    <div className="space-y-8">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Top Welcome & Quick Actions */}
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2.5">
             <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
@@ -123,42 +125,58 @@ export const AdminDashboardPage = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <Link
-            to="/admin/courses/new"
-            className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
-          >
-            <Plus className="w-4 h-4" /> Add Course
-          </Link>
-          <Link
-            to="/admin/live-classes"
-            className="inline-flex items-center gap-1.5 bg-[#1769D2] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
-          >
-            <Video className="w-4 h-4" /> Schedule Zoom Class
-          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/courses/new"
+              className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
+            >
+              <Plus className="w-4 h-4" /> Add Course
+            </Link>
+          )}
+          {hasRole('ADMIN', 'FACULTY', 'SUPPORT_STAFF') && (
+            <Link
+              to="/admin/live-classes"
+              className="inline-flex items-center gap-1.5 bg-[#1769D2] hover:bg-blue-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
+            >
+              <Video className="w-4 h-4" /> Live Classes
+            </Link>
+          )}
+          {hasRole('ADMIN', 'FINANCE_STAFF') && (
+            <Link
+              to="/admin/approvals"
+              className="inline-flex items-center gap-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
+            >
+              Approvals Queue
+            </Link>
+          )}
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center shrink-0">
-            <Users className="w-6 h-6" />
+      {/* Metrics Row (Role-Scoped) */}
+      <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {metrics.totalStudents !== null && metrics.totalStudents !== undefined && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center shrink-0">
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[11px] text-slate-400 font-bold uppercase">Total Students</span>
+              <p className="text-2xl font-black text-[#12356B]">{metrics.totalStudents}</p>
+            </div>
           </div>
-          <div>
-            <span className="text-[11px] text-slate-400 font-bold uppercase">Total Students</span>
-            <p className="text-2xl font-black text-[#12356B]">{metrics.totalStudents || 0}</p>
-          </div>
-        </div>
+        )}
 
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
-          <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-            <CreditCard className="w-6 h-6" />
+        {metrics.totalRevenue !== null && metrics.totalRevenue !== undefined && (
+          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <CreditCard className="w-6 h-6" />
+            </div>
+            <div>
+              <span className="text-[11px] text-slate-400 font-bold uppercase">Verified Revenue</span>
+              <p className="text-2xl font-black text-emerald-700">₹{metrics.totalRevenue.toLocaleString('en-IN')}</p>
+            </div>
           </div>
-          <div>
-            <span className="text-[11px] text-slate-400 font-bold uppercase">Verified Revenue</span>
-            <p className="text-2xl font-black text-emerald-700">₹{metrics.totalRevenue?.toLocaleString('en-IN') || 0}</p>
-          </div>
-        </div>
+        )}
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center gap-3.5">
           <div className="w-12 h-12 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center shrink-0">
@@ -181,61 +199,69 @@ export const AdminDashboardPage = () => {
         </div>
       </div>
 
-      {/* Recent Activity Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Registrations */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-bold text-[#12356B] font-heading flex items-center gap-2">
-              <Users className="w-4 h-4 text-[#1769D2]" /> Recent Student Registrations
-            </h3>
-            <Link to="/admin/students" className="text-xs font-bold text-[#1769D2] hover:underline">
-              View all
-            </Link>
-          </div>
-
-          <div className="divide-y divide-slate-100 text-xs">
-            {recentStudents.map((s) => (
-              <div key={s._id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-[#12356B]">{s.name}</p>
-                  <p className="text-slate-400">{s.email} • {s.phone}</p>
-                </div>
-                <span className="text-[11px] text-slate-500 font-medium">
-                  {new Date(s.createdAt).toLocaleDateString()}
-                </span>
+      {/* Recent Activity Grid (Role-Scoped) - Independently Scrollable */}
+      {(hasRole('ADMIN', 'SUPPORT_STAFF') || hasRole('ADMIN', 'FINANCE_STAFF')) && (
+        <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Recent Registrations */}
+          {hasRole('ADMIN', 'SUPPORT_STAFF') && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-[#12356B] font-heading flex items-center gap-2">
+                  <Users className="w-4 h-4 text-[#1769D2]" /> Recent Student Registrations
+                </h3>
+                <Link to="/admin/students" className="text-xs font-bold text-[#1769D2] hover:underline">
+                  View all
+                </Link>
               </div>
-            ))}
+
+              <div className="divide-y divide-slate-100 text-xs">
+                {recentStudents.map((s) => (
+                  <div key={s._id} className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-[#12356B]">{s.name}</p>
+                      <p className="text-slate-400">{s.email} • {s.phone}</p>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {new Date(s.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Recent Transactions */}
+          {hasRole('ADMIN', 'FINANCE_STAFF') && (
+            <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                <h3 className="text-base font-bold text-[#12356B] font-heading flex items-center gap-2">
+                  <CreditCard className="w-4 h-4 text-emerald-600" /> Recent Verified Orders
+                </h3>
+                <Link to="/admin/payments" className="text-xs font-bold text-[#1769D2] hover:underline">
+                  View all
+                </Link>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                {recentOrders.map((o) => (
+                  <div key={o._id} className="py-3 flex items-center justify-between">
+                    <div>
+                      <p className="font-bold text-[#12356B]">{o.studentId?.name || 'Student'}</p>
+                      <p className="text-slate-400 font-mono text-[10px]">{o.receiptNumber || o.razorpayOrderId}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-black text-emerald-700">₹{o.amount}</p>
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">{o.status}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
           </div>
         </div>
-
-        {/* Recent Transactions */}
-        <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-            <h3 className="text-base font-bold text-[#12356B] font-heading flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-emerald-600" /> Recent Verified Orders
-            </h3>
-            <Link to="/admin/payments" className="text-xs font-bold text-[#1769D2] hover:underline">
-              View all
-            </Link>
-          </div>
-
-          <div className="divide-y divide-slate-100 text-xs">
-            {recentOrders.map((o) => (
-              <div key={o._id} className="py-3 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-[#12356B]">{o.studentId?.name || 'Student'}</p>
-                  <p className="text-slate-400 font-mono text-[10px]">{o.receiptNumber || o.razorpayOrderId}</p>
-                </div>
-                <div className="text-right">
-                  <p className="font-black text-emerald-700">₹{o.amount}</p>
-                  <span className="text-[10px] font-bold text-slate-400 uppercase">{o.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   );
 };

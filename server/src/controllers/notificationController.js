@@ -29,30 +29,48 @@ const markAsRead = async (req, res, next) => {
   }
 };
 
+const escapeRegex = (str) => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
 // Public: Get all active, published institutional notifications
 const getPublicNotifications = async (req, res) => {
   try {
-    const { type, search, page = 1, limit = 20 } = req.query;
+    const { type, category, search, page = 1, limit = 20 } = req.query;
     const now = new Date();
 
-    const query = {
-      isPublic: true,
-      status: 'PUBLISHED',
-      $or: [
-        { expiresAt: null },
-        { expiresAt: { $exists: false } },
-        { expiresAt: { $gte: now } },
-      ],
-    };
+    const conditions = [
+      { isPublic: true },
+      { status: 'PUBLISHED' },
+      {
+        $or: [
+          { expiresAt: null },
+          { expiresAt: { $exists: false } },
+          { expiresAt: { $gte: now } },
+        ],
+      },
+    ];
 
     if (type && type !== 'ALL') {
-      query.type = type;
+      conditions.push({ type });
+    }
+
+    if (category && category !== 'ALL') {
+      conditions.push({ category: category.toUpperCase() });
     }
 
     if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), 'i');
-      query.$or = [{ title: regex }, { description: regex }, { message: regex }];
+      const regex = new RegExp(escapeRegex(search.trim()), 'i');
+      conditions.push({
+        $or: [
+          { title: regex },
+          { description: regex },
+          { message: regex },
+          { organization: regex },
+          { postName: regex },
+        ],
+      });
     }
+
+    const query = { $and: conditions };
 
     const pageNum = Math.max(1, parseInt(page, 10));
     const limitNum = Math.max(1, parseInt(limit, 10));
@@ -100,7 +118,7 @@ const getPublicNotificationById = async (req, res) => {
 // Admin: Get all notifications (published, draft, expired, inactive)
 const getAdminNotifications = async (req, res) => {
   try {
-    const { status, type, search, page = 1, limit = 20 } = req.query;
+    const { status, type, category, search, page = 1, limit = 20 } = req.query;
     const query = { isPublic: true };
 
     if (status && status !== 'ALL') {
@@ -109,9 +127,18 @@ const getAdminNotifications = async (req, res) => {
     if (type && type !== 'ALL') {
       query.type = type;
     }
+    if (category && category !== 'ALL') {
+      query.category = category.toUpperCase();
+    }
     if (search && search.trim()) {
-      const regex = new RegExp(search.trim(), 'i');
-      query.$or = [{ title: regex }, { description: regex }, { message: regex }];
+      const regex = new RegExp(escapeRegex(search.trim()), 'i');
+      query.$or = [
+        { title: regex },
+        { description: regex },
+        { message: regex },
+        { organization: regex },
+        { postName: regex },
+      ];
     }
 
     const pageNum = Math.max(1, parseInt(page, 10));
@@ -150,6 +177,16 @@ const createAdminNotification = async (req, res) => {
       description,
       message,
       type = 'ANNOUNCEMENT',
+      category = 'GENERAL',
+      organization,
+      postName,
+      vacancies,
+      qualification,
+      ageLimit,
+      applicationStartDate,
+      applicationEndDate,
+      applyOnlineUrl,
+      officialNotificationPdfUrl,
       link,
       attachment,
       status = 'PUBLISHED',
@@ -170,12 +207,22 @@ const createAdminNotification = async (req, res) => {
       description: description ? description.trim() : (message ? message.trim() : ''),
       message: message ? message.trim() : (description ? description.trim() : ''),
       type,
+      category: category ? category.toUpperCase() : 'GENERAL',
+      organization: organization ? organization.trim() : '',
+      postName: postName ? postName.trim() : '',
+      vacancies: Number(vacancies) || 0,
+      qualification: qualification ? qualification.trim() : '',
+      ageLimit: ageLimit ? ageLimit.trim() : '',
+      applicationStartDate: applicationStartDate ? new Date(applicationStartDate) : undefined,
+      applicationEndDate: applicationEndDate ? new Date(applicationEndDate) : undefined,
+      applyOnlineUrl: applyOnlineUrl ? applyOnlineUrl.trim() : '',
+      officialNotificationPdfUrl: officialNotificationPdfUrl ? officialNotificationPdfUrl.trim() : '',
       link: link ? link.trim() : '',
       attachment: attachment ? attachment.trim() : '',
       status: ['PUBLISHED', 'DRAFT', 'INACTIVE'].includes(status) ? status : 'PUBLISHED',
       isPinned: Boolean(isPinned),
       publishedAt: publishedAt ? new Date(publishedAt) : new Date(),
-      expiresAt: expiresAt ? new Date(expiresAt) : null,
+      expiresAt: expiresAt ? new Date(expiresAt) : (applicationEndDate ? new Date(applicationEndDate) : null),
       displayOrder: typeof displayOrder === 'number' ? displayOrder : 0,
     });
 
@@ -195,6 +242,16 @@ const updateAdminNotification = async (req, res) => {
       description,
       message,
       type,
+      category,
+      organization,
+      postName,
+      vacancies,
+      qualification,
+      ageLimit,
+      applicationStartDate,
+      applicationEndDate,
+      applyOnlineUrl,
+      officialNotificationPdfUrl,
       link,
       attachment,
       status,
@@ -213,6 +270,16 @@ const updateAdminNotification = async (req, res) => {
     if (description !== undefined) notification.description = description.trim();
     if (message !== undefined) notification.message = message.trim();
     if (type !== undefined) notification.type = type;
+    if (category !== undefined) notification.category = category.toUpperCase();
+    if (organization !== undefined) notification.organization = organization.trim();
+    if (postName !== undefined) notification.postName = postName.trim();
+    if (vacancies !== undefined) notification.vacancies = Number(vacancies) || 0;
+    if (qualification !== undefined) notification.qualification = qualification.trim();
+    if (ageLimit !== undefined) notification.ageLimit = ageLimit.trim();
+    if (applicationStartDate !== undefined) notification.applicationStartDate = applicationStartDate ? new Date(applicationStartDate) : null;
+    if (applicationEndDate !== undefined) notification.applicationEndDate = applicationEndDate ? new Date(applicationEndDate) : null;
+    if (applyOnlineUrl !== undefined) notification.applyOnlineUrl = applyOnlineUrl.trim();
+    if (officialNotificationPdfUrl !== undefined) notification.officialNotificationPdfUrl = officialNotificationPdfUrl.trim();
     if (link !== undefined) notification.link = link ? link.trim() : '';
     if (attachment !== undefined) notification.attachment = attachment ? attachment.trim() : '';
     if (status !== undefined) notification.status = status;

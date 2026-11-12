@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { courseService, adminService } from '../../services';
 import { useToast } from '../../context/ToastContext';
 import { useRealtimeEvent } from '../../context/SocketContext';
-import { BookOpen, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, Filter, MapPin, Search, X, RotateCcw } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, Filter, MapPin, Search, X, RotateCcw, Tags, FolderTree } from 'lucide-react';
 
 export const AdminCoursesPage = () => {
   const [courses, setCourses] = useState([]);
@@ -13,6 +13,22 @@ export const AdminCoursesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const { success, error: toastError } = useToast();
+
+  // Categories Modal State
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [categories, setCategories] = useState([]);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [categoryDivisionFilter, setCategoryDivisionFilter] = useState('ALL');
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    slug: '',
+    division: 'BANKERS_PATH',
+    description: '',
+    color: '#1769D2',
+    sortOrder: 0,
+    isActive: true,
+  });
 
   const fetchCourses = async () => {
     try {
@@ -84,6 +100,105 @@ export const AdminCoursesPage = () => {
     }
   };
 
+  const fetchCategories = async () => {
+    try {
+      setLoadingCategories(true);
+      const res = await courseService.getCategories();
+      if (res.success && Array.isArray(res.data)) {
+        setCategories(res.data);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoadingCategories(false);
+    }
+  };
+
+  const handleOpenCategoryModal = () => {
+    fetchCategories();
+    setEditingCategoryId(null);
+    setCategoryForm({
+      name: '',
+      slug: '',
+      division: 'BANKERS_PATH',
+      description: '',
+      color: '#1769D2',
+      sortOrder: 0,
+      isActive: true,
+    });
+    setShowCategoryModal(true);
+  };
+
+  const handleEditCategory = (cat) => {
+    setEditingCategoryId(cat._id);
+    setCategoryForm({
+      name: cat.name || '',
+      slug: cat.slug || '',
+      division: cat.division || 'BANKERS_PATH',
+      description: cat.description || '',
+      color: cat.color || '#1769D2',
+      sortOrder: cat.sortOrder || 0,
+      isActive: cat.isActive !== undefined ? cat.isActive : true,
+    });
+  };
+
+  const handleSaveCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryForm.name.trim()) {
+      toastError('Category name is required');
+      return;
+    }
+    try {
+      if (editingCategoryId) {
+        const res = await courseService.updateCategory(editingCategoryId, categoryForm);
+        if (res.success) {
+          success('Category updated successfully');
+          fetchCategories();
+          setEditingCategoryId(null);
+          setCategoryForm({
+            name: '',
+            slug: '',
+            division: 'BANKERS_PATH',
+            description: '',
+            color: '#1769D2',
+            sortOrder: 0,
+            isActive: true,
+          });
+        }
+      } else {
+        const res = await courseService.createCategory(categoryForm);
+        if (res.success) {
+          success('Category created successfully');
+          fetchCategories();
+          setCategoryForm({
+            name: '',
+            slug: '',
+            division: 'BANKERS_PATH',
+            description: '',
+            color: '#1769D2',
+            sortOrder: 0,
+            isActive: true,
+          });
+        }
+      }
+    } catch (err) {
+      toastError(err.message || 'Failed to save category');
+    }
+  };
+
+  const handleDeleteCategory = async (catId, catName) => {
+    if (!window.confirm(`Are you sure you want to delete category "${catName}"?`)) return;
+    try {
+      const res = await courseService.deleteCategory(catId);
+      if (res.success) {
+        success('Category deleted successfully');
+        fetchCategories();
+      }
+    } catch (err) {
+      toastError(err.message || 'Failed to delete category');
+    }
+  };
+
   const filteredCourses = courses.filter((c) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.trim().toLowerCase();
@@ -95,8 +210,8 @@ export const AdminCoursesPage = () => {
   });
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Course Catalogue Management
@@ -105,16 +220,26 @@ export const AdminCoursesPage = () => {
             Create, edit, publish, configure pricing, homepage tiles, state associations, and syllabus modules.
           </p>
         </div>
-        <Link
-          to="/admin/courses/new"
-          className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
-        >
-          <Plus className="w-4 h-4" /> Add New Course
-        </Link>
+        <div className="flex flex-wrap items-center gap-2.5">
+          <button
+            type="button"
+            onClick={handleOpenCategoryModal}
+            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-[#12356B] text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 transition-all cursor-pointer"
+          >
+            <Tags className="w-4 h-4 text-[#1769D2]" />
+            <span>Manage Categories</span>
+          </button>
+          <Link
+            to="/admin/courses/new"
+            className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
+          >
+            <Plus className="w-4 h-4" /> Add New Course
+          </Link>
+        </div>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
+      <div className="shrink-0 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3 text-xs">
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-1.5 font-bold text-slate-600">
             <Filter className="w-3.5 h-3.5 text-[#1769D2]" /> Filter by:
@@ -152,6 +277,7 @@ export const AdminCoursesPage = () => {
             <option value="BANKERS_PATH">Banker's Path</option>
             <option value="COMPETITIVE_EXAMS">Competitive Exams</option>
             <option value="ENTRANCE_EXAMS">Entrance Exams</option>
+            <option value="TUITIONS">Tuitions & Coaching</option>
           </select>
 
           {/* State Filter */}
@@ -187,7 +313,8 @@ export const AdminCoursesPage = () => {
         </div>
       </div>
 
-      {loading ? (
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        {loading ? (
         <div className="py-16 text-center">
           <div className="w-8 h-8 border-4 border-[#1769D2] border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
           <p className="text-xs text-slate-500">Loading courses...</p>
@@ -327,6 +454,230 @@ export const AdminCoursesPage = () => {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+      </div>
+
+      {/* Categories Management Modal */}
+      {showCategoryModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-6 sm:p-8 max-w-3xl w-full border border-slate-200 shadow-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#1769D2] flex items-center justify-center">
+                  <Tags className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[#12356B] font-heading">
+                    Manage Course Categories
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Create, update, and reorder categories across educational divisions
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowCategoryModal(false)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="overflow-y-auto flex-1 mt-4 space-y-6 pr-1">
+              {/* Category Create / Edit Form */}
+              <form onSubmit={handleSaveCategory} className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-3 text-xs">
+                <h4 className="font-extrabold text-[#12356B] text-xs">
+                  {editingCategoryId ? 'Edit Category' : 'Create New Category'}
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1">Category Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                      placeholder="e.g. JAIIB Exams"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1">Division *</label>
+                    <select
+                      value={categoryForm.division}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, division: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
+                    >
+                      <option value="BANKERS_PATH">Banker's Path</option>
+                      <option value="COMPETITIVE_EXAMS">Competitive Exams</option>
+                      <option value="ENTRANCE_EXAMS">Entrance Exams</option>
+                      <option value="TUITIONS">Tuitions & Coaching</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1">Tag / Color (Hex)</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="color"
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                        className="w-9 h-9 rounded-lg border border-slate-200 p-0.5 cursor-pointer bg-white"
+                      />
+                      <input
+                        type="text"
+                        value={categoryForm.color}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, color: e.target.value })}
+                        placeholder="#1769D2"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-mono text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-bold text-slate-600 mb-1">Description (Optional)</label>
+                    <input
+                      type="text"
+                      value={categoryForm.description}
+                      onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                      placeholder="Short summary of exams covered"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-between gap-3 pt-4">
+                    <label className="flex items-center gap-2 cursor-pointer font-bold text-slate-700">
+                      <input
+                        type="checkbox"
+                        checked={categoryForm.isActive}
+                        onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })}
+                        className="rounded text-[#1769D2]"
+                      />
+                      <span>Active & Visible</span>
+                    </label>
+
+                    <div className="flex items-center gap-2">
+                      {editingCategoryId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingCategoryId(null);
+                            setCategoryForm({
+                              name: '',
+                              slug: '',
+                              division: 'BANKERS_PATH',
+                              description: '',
+                              color: '#1769D2',
+                              sortOrder: 0,
+                              isActive: true,
+                            });
+                          }}
+                          className="px-3 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 font-bold text-slate-700"
+                        >
+                          Cancel
+                        </button>
+                      )}
+                      <button
+                        type="submit"
+                        className="px-4 py-2 rounded-xl bg-[#12356B] hover:bg-[#0e2a56] text-white font-bold shadow-xs"
+                      >
+                        {editingCategoryId ? 'Update Category' : 'Create Category'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </form>
+
+              {/* Division Filter Tabs */}
+              <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 pb-2 text-xs">
+                {['ALL', 'BANKERS_PATH', 'COMPETITIVE_EXAMS', 'ENTRANCE_EXAMS', 'TUITIONS'].map((div) => (
+                  <button
+                    key={div}
+                    type="button"
+                    onClick={() => setCategoryDivisionFilter(div)}
+                    className={`px-3 py-1.5 rounded-lg font-bold transition-colors cursor-pointer ${
+                      categoryDivisionFilter === div
+                        ? 'bg-[#12356B] text-white'
+                        : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    {div === 'ALL' ? 'All Divisions' : div.replace('_', ' ')}
+                  </button>
+                ))}
+              </div>
+
+              {/* Category Table */}
+              <div className="border border-slate-200 rounded-2xl overflow-hidden">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-[#12356B] border-b border-slate-200">
+                      <th className="p-3 font-bold">Category Name</th>
+                      <th className="p-3 font-bold">Division</th>
+                      <th className="p-3 font-bold">Slug</th>
+                      <th className="p-3 font-bold">Status</th>
+                      <th className="p-3 font-bold text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-slate-700">
+                    {categories
+                      .filter((c) => categoryDivisionFilter === 'ALL' || c.division === categoryDivisionFilter)
+                      .map((cat) => (
+                        <tr key={cat._id} className="hover:bg-slate-50">
+                          <td className="p-3 font-bold text-[#12356B] flex items-center gap-2">
+                            <span
+                              className="w-2.5 h-2.5 rounded-full shrink-0"
+                              style={{ background: cat.color || '#1769D2' }}
+                            />
+                            <span>{cat.name}</span>
+                          </td>
+                          <td className="p-3 font-semibold text-slate-500">{cat.division}</td>
+                          <td className="p-3 font-mono text-[11px] text-slate-400">{cat.slug}</td>
+                          <td className="p-3">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                                cat.isActive ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-500'
+                              }`}
+                            >
+                              {cat.isActive ? 'Active' : 'Disabled'}
+                            </span>
+                          </td>
+                          <td className="p-3 text-right space-x-1.5">
+                            <button
+                              type="button"
+                              onClick={() => handleEditCategory(cat)}
+                              className="p-1 text-[#1769D2] hover:bg-blue-50 rounded"
+                              title="Edit Category"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteCategory(cat._id, cat.name)}
+                              className="p-1 text-rose-500 hover:bg-rose-50 rounded"
+                              title="Delete Category"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    {categories.filter((c) => categoryDivisionFilter === 'ALL' || c.division === categoryDivisionFilter).length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="p-6 text-center text-slate-400 text-xs">
+                          No categories found for this division.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         </div>
       )}

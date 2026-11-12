@@ -6,6 +6,25 @@ const { isValidZoomUrl } = require('../utils/zoomValidator');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { broadcastLiveClassUpdate } = require('../utils/socketService');
 
+// Public: Get sanitized live class schedule (no Zoom URL or passcode exposed)
+const getPublicLiveClassSchedule = async (req, res, next) => {
+  try {
+    const classes = await LiveClass.find({
+      isPublished: true,
+      status: { $in: ['SCHEDULED', 'LIVE'] },
+    })
+      .select('title subject batchName facultyName scheduledDate startTime durationMinutes status courseId createdAt')
+      .populate('courseId', 'title slug division thumbnail')
+      .sort({ scheduledDate: 1, startTime: 1 })
+      .limit(24)
+      .lean();
+
+    return sendSuccess(res, 'Public live class schedule retrieved', classes);
+  } catch (error) {
+    next(error);
+  }
+};
+
 // Student: Get upcoming authorized live classes for enrolled courses
 const getStudentLiveClasses = async (req, res, next) => {
   try {
@@ -211,6 +230,7 @@ const deleteLiveClass = async (req, res, next) => {
 };
 
 module.exports = {
+  getPublicLiveClassSchedule,
   getStudentLiveClasses,
   getAllLiveClasses,
   createLiveClass,

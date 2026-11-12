@@ -3,6 +3,7 @@ const Course = require('../models/Course');
 const Entitlement = require('../models/Entitlement');
 const User = require('../models/User');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
+const { attachMediaTokenIfLocal } = require('../middleware/protectedMedia');
 
 // Get all lessons of a course with locked/unlocked statuses
 const getCourseLessons = async (req, res, next) => {
@@ -40,6 +41,8 @@ const getCourseLessons = async (req, res, next) => {
         _id: lesson._id,
         courseId: lesson.courseId,
         moduleTitle: lesson.moduleTitle,
+        subject: lesson.subject || '',
+        chapter: lesson.chapter || '',
         title: lesson.title,
         description: lesson.description,
         durationMinutes: lesson.durationMinutes,
@@ -123,15 +126,18 @@ const getLessonPlayback = async (req, res, next) => {
       });
     }
 
+    const mediaSubject = req.user ? req.user._id : 'public';
     return sendSuccess(res, 'Lesson playback authorized', {
       lesson: {
         _id: lesson._id,
         title: lesson.title,
         moduleTitle: lesson.moduleTitle,
+        subject: lesson.subject || '',
+        chapter: lesson.chapter || '',
         description: lesson.description,
-        videoUrl: lesson.videoUrl,
+        videoUrl: attachMediaTokenIfLocal(lesson.videoUrl, mediaSubject),
         durationMinutes: lesson.durationMinutes,
-        studyMaterialUrl: lesson.studyMaterialUrl,
+        studyMaterialUrl: attachMediaTokenIfLocal(lesson.studyMaterialUrl, mediaSubject),
         studyMaterialName: lesson.studyMaterialName,
         course: {
           _id: lesson.courseId._id,
@@ -145,14 +151,40 @@ const getLessonPlayback = async (req, res, next) => {
   }
 };
 
-// Admin: Create lesson
+const assertFacultyCourseAccess = (user, courseId) => {
+  if (!user || user.role !== 'FACULTY') return true;
+  const assigned = Array.isArray(user.assignedCourses) ? user.assignedCourses.map(String) : [];
+  if (assigned.length === 0 || !courseId) return false;
+  return assigned.includes(String(courseId));
+};
+
+// Admin / Assigned Faculty: Create lesson
 const createLesson = async (req, res, next) => {
   try {
-    const { courseId, moduleTitle, title, description, videoUrl, durationMinutes, sortOrder, isPreview, studyMaterialUrl, studyMaterialName } = req.body;
+    const {
+      courseId,
+      moduleTitle,
+      subject,
+      chapter,
+      title,
+      description,
+      videoUrl,
+      durationMinutes,
+      sortOrder,
+      isPreview,
+      studyMaterialUrl,
+      studyMaterialName,
+    } = req.body;
+
+    if (!assertFacultyCourseAccess(req.user, courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only manage lessons for their assigned courses.', 403);
+    }
 
     const lesson = await Lesson.create({
       courseId,
       moduleTitle,
+      subject: subject || '',
+      chapter: chapter || '',
       title,
       description,
       videoUrl,
@@ -169,14 +201,19 @@ const createLesson = async (req, res, next) => {
   }
 };
 
-// Admin: Update lesson
+// Admin / Assigned Faculty: Update lesson
 const updateLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const lesson = await Lesson.findByIdAndUpdate(id, req.body, { new: true });
-    if (!lesson) {
+    const existing = await Lesson.findById(id);
+    if (!existing) {
       return sendError(res, 'Lesson not found', 404);
     }
+    const targetCourseId = req.body.courseId || existing.courseId;
+    if (!assertFacultyCourseAccess(req.user, existing.courseId) || !assertFacultyCourseAccess(req.user, targetCourseId)) {
+      return sendError(res, 'Forbidden: Faculty may only update lessons in their assigned courses.', 403);
+    }
+    const lesson = await Lesson.findByIdAndUpdate(id, req.body, { new: true });
     return sendSuccess(res, 'Lesson updated successfully', lesson);
   } catch (error) {
     next(error);

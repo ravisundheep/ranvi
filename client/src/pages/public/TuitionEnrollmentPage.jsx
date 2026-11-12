@@ -29,6 +29,7 @@ export const TuitionEnrollmentPage = () => {
   const { success, error: toastError } = useToast();
 
   const [program, setProgram] = useState(null);
+  const [selectedPlan, setSelectedPlan] = useState(null);
   const [alreadyEnrolled, setAlreadyEnrolled] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
@@ -44,7 +45,7 @@ export const TuitionEnrollmentPage = () => {
   // 1. Require student login
   useEffect(() => {
     if (!isAuthenticated) {
-      navigate(`/login?redirect=${encodeURIComponent(location.pathname)}`);
+      navigate('/login', { state: { from: location.pathname } });
     }
   }, [isAuthenticated, navigate, location.pathname]);
 
@@ -58,6 +59,9 @@ export const TuitionEnrollmentPage = () => {
         if (isMounted && res?.success && res.data) {
           const prog = res.data.course || res.data;
           setProgram(prog);
+          if (Array.isArray(prog.subscriptionPlans) && prog.subscriptionPlans.length > 0) {
+            setSelectedPlan(prog.subscriptionPlans[0]);
+          }
           if (res.data.userAccess?.isEnrolled || prog.isEnrolled) {
             setAlreadyEnrolled(true);
           }
@@ -91,90 +95,90 @@ export const TuitionEnrollmentPage = () => {
       setProcessing(true);
 
       // 1. Create Enrollment Intent on Backend
-      const intentRes = await enrollmentService.createEnrollmentIntent({
+      const intentRes = await enrollmentService.createIntent({
         courseId: program._id,
+        preferredBatch: batchTiming,
         batchTiming,
         parentName,
         studentSchool,
         address,
         notes,
+        durationMonths: selectedPlan ? selectedPlan.durationMonths : null,
       });
 
       if (!intentRes?.success || !intentRes.data) {
         throw new Error(intentRes?.message || 'Could not initiate enrollment process');
       }
 
-      const { enrollmentId, razorpayOrderId, amount, currency, keyId } = intentRes.data;
-
-      // 2. Check if Razorpay SDK is available and live
-      if (
-        window.Razorpay &&
-        razorpayOrderId &&
-        !razorpayOrderId.startsWith('order_dev_') &&
-        !razorpayOrderId.startsWith('order_test_')
-      ) {
-        const options = {
-          key: keyId,
-          amount: amount * 100,
-          currency: currency || 'INR',
-          name: 'Ranvi Institutions',
-          description: `Enrollment: ${program.title}`,
-          order_id: razorpayOrderId,
-          prefill: {
-            name: user.name,
-            email: user.email,
-            contact: user.phone,
-          },
-          theme: {
-            color: '#0B2545',
-          },
-          handler: async function (response) {
-            try {
-              const verifyRes = await enrollmentService.verifyEnrollmentPayment({
-                enrollmentId,
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              });
-
-              if (verifyRes?.success) {
-                success('Enrollment confirmed and active!');
-                setCompletedEnrollment(verifyRes.data?.enrollment || verifyRes.data);
-              }
-            } catch (vErr) {
-              toastError(vErr.message || 'Payment verification failed');
-            }
-          },
-          modal: {
-            ondismiss: function () {
-              setProcessing(false);
-            },
-          },
-        };
-
-        const rzp = new window.Razorpay(options);
-        rzp.open();
-      } else {
-        // Fallback for development / mock verification
-        const mockPaymentId = `pay_mock_${Date.now()}_${Math.random().toString(36).substring(7)}`;
-        const verifyRes = await enrollmentService.verifyEnrollmentPayment({
-          enrollmentId,
-          razorpay_order_id: razorpayOrderId || `order_dev_${Date.now()}`,
-          razorpay_payment_id: mockPaymentId,
-          razorpay_signature: 'dev_mock_signature_verified',
-        });
-
-        if (verifyRes?.success) {
-          success('Enrollment confirmed and active!');
-          setCompletedEnrollment(verifyRes.data?.enrollment || verifyRes.data);
-        }
+      if (intentRes.data.isFree) {
+        success('Free enrollment confirmed and active!');
+        setCompletedEnrollment(intentRes.data);
+        setProcessing(false);
+        return;
       }
+
+      const { enrollmentId, razorpayOrderId, amount, currency, keyId, key } = intentRes.data;
+      const resolvedKey = keyId || key;
+
+      // 2. Require authentic Razorpay Checkout SDK
+      if (!window.Razorpay || !resolvedKey || !razorpayOrderId) {
+        toastError('Razorpay payment gateway is unavailable. Please refresh the page or contact support.');
+        setProcessing(false);
+        return;
+      }
+
+      const options = {
+        key: resolvedKey,
+        amount: Math.round(amount * 100),
+        currency: currency || 'INR',
+        name: 'Ranvi Institutions',
+        description: `Enrollment: ${program.title}`,
+        order_id: razorpayOrderId,
+        prefill: {
+          name: user.name,
+          email: user.email,
+          contact: user.phone,
+        },
+        theme: {
+          color: '#0B2545',
+        },
+        handler: async function (response) {
+          try {
+            const verifyRes = await enrollmentService.verifyPayment({
+              enrollmentId,
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
+            });
+
+            if (verifyRes?.success) {
+              success('Enrollment confirmed and active!');
+              setCompletedEnrollment(verifyRes.data?.enrollment || verifyRes.data);
+            }
+          } catch (vErr) {
+            toastError(vErr.message || 'Payment verification failed');
+          } finally {
+            setProcessing(false);
+          }
+        },
+        modal: {
+          ondismiss: function () {
+            setProcessing(false);
+          },
+        },
+      };
+
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', function (response) {
+        toastError(response?.error?.description || 'Payment failed in gateway. Please retry.');
+        setProcessing(false);
+      });
+      rzp.open();
     } catch (err) {
       if (err.message && (err.message.includes('already enrolled') || err.message.includes('active subscription'))) {
         setAlreadyEnrolled(true);
       }
       toastError(err.message || 'Enrollment checkout failed. Please try again.');
-    } finally {
       setProcessing(false);
     }
   };
@@ -317,8 +321,10 @@ export const TuitionEnrollmentPage = () => {
   }
 
   // 4. Enrollment Checkout Form
-  const currentPrice = program.fee ?? program.price ?? 0;
-  const originalPrice = program.originalPrice ?? program.fee ?? program.price ?? currentPrice;
+  const currentPrice = selectedPlan ? selectedPlan.price : (program.fee ?? program.price ?? 0);
+  const originalPrice = selectedPlan
+    ? (selectedPlan.originalPrice || selectedPlan.price)
+    : (program.originalPrice ?? program.fee ?? program.price ?? currentPrice);
   const discountAmount = originalPrice > currentPrice ? originalPrice - currentPrice : 0;
 
   return (
@@ -407,6 +413,46 @@ export const TuitionEnrollmentPage = () => {
                 </div>
               </div>
             </div>
+
+            {/* Subscription Duration Selection */}
+            {Array.isArray(program.subscriptionPlans) && program.subscriptionPlans.length > 0 && (
+              <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-3">
+                <h2 className="text-sm font-black text-[#0B2545] flex items-center gap-2">
+                  <GraduationCap className="w-4 h-4 text-[#1769D2]" />
+                  Select Subscription Plan Duration
+                </h2>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {program.subscriptionPlans.map((plan, pIdx) => {
+                    const isSelected = selectedPlan?.durationMonths === plan.durationMonths;
+                    return (
+                      <button
+                        key={pIdx}
+                        type="button"
+                        onClick={() => setSelectedPlan(plan)}
+                        className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? 'border-[#0B2545] bg-blue-50/50 ring-2 ring-[#0B2545]/20 shadow-xs'
+                            : 'border-slate-200 hover:border-slate-300 bg-white'
+                        }`}
+                      >
+                        <div className="text-xs font-black text-[#0B2545]">
+                          {plan.label || `${plan.durationMonths} Months`}
+                        </div>
+                        <div className="text-base font-black text-[#1769D2] mt-1">
+                          ₹{plan.price?.toLocaleString('en-IN')}
+                        </div>
+                        {plan.originalPrice && plan.originalPrice > plan.price && (
+                          <div className="text-[10px] text-slate-400 line-through">
+                            ₹{plan.originalPrice?.toLocaleString('en-IN')}
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Batch & Schedule Selection */}
             <div className="bg-white rounded-2xl p-5 border border-slate-200/90 shadow-xs space-y-4">

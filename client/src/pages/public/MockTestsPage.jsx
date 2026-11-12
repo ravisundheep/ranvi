@@ -174,7 +174,7 @@ export const MockTestsPage = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {filteredTests.map((test) => (
-                <ExamCard key={test._id} test={test} />
+                <ExamCard key={test._id} test={test} isUnlocked={test.isUnlocked} />
               ))}
             </div>
           </div>

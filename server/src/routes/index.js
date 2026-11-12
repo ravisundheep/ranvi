@@ -18,6 +18,7 @@ const notificationRoutes = require('./notificationRoutes');
 const entranceExamRoutes = require('./entranceExamRoutes');
 const latestUpdateRoutes = require('./latestUpdateRoutes');
 const enrollmentRoutes = require('./enrollmentRoutes');
+const walletRoutes = require('./walletRoutes');
 
 router.use('/auth', authRoutes);
 router.use('/courses', courseRoutes);
@@ -37,6 +38,7 @@ router.use('/entrance-exams', entranceExamRoutes);
 router.use('/latest-updates', latestUpdateRoutes);
 router.use('/updates', latestUpdateRoutes);
 router.use('/enrollments', enrollmentRoutes);
+router.use('/wallet', walletRoutes);
 
 // Health check endpoint
 router.get('/health', (req, res) => {

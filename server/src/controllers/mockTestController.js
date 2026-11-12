@@ -1,25 +1,62 @@
+const mongoose = require('mongoose');
 const MockTest = require('../models/MockTest');
 const Question = require('../models/Question');
+const ExamAttempt = require('../models/ExamAttempt');
 const Entitlement = require('../models/Entitlement');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
+const { attachMediaTokenIfLocal } = require('../middleware/protectedMedia');
 
 // Public/Student: Get list of mock tests
 const getMockTests = async (req, res, next) => {
   try {
-    const { division, courseId, isDemoFree, page = 1, limit = 20 } = req.query;
-    const query = { isPublished: true };
+    const { division, courseId, isDemoFree, search, page = 1, limit = 20 } = req.query;
+    const isAdmin = req.user && ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role);
+    const query = isAdmin && req.query.includeUnpublished === 'true' ? {} : { isPublished: true };
 
-    if (division) query.division = division.toUpperCase();
+    if (division && division !== 'ALL') query.division = division.toUpperCase();
     if (courseId) query.courseId = courseId;
     if (isDemoFree !== undefined) query.isDemoFree = isDemoFree === 'true';
+    if (search && search.trim()) {
+      const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(escaped, 'i');
+      query.$or = [{ title: regex }, { description: regex }];
+    }
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const total = await MockTest.countDocuments(query);
-    const tests = await MockTest.find(query)
+    const rawTests = await MockTest.find(query)
       .populate('courseId', 'title slug thumbnail')
       .sort({ paperNumber: 1, createdAt: -1 })
       .skip(skip)
-      .limit(parseInt(limit, 10));
+      .limit(parseInt(limit, 10))
+      .lean();
+
+    let unlockedItemIds = new Set();
+    if (req.user && !isAdmin) {
+      const entitlements = await Entitlement.find({
+        studentId: req.user._id,
+        isActive: true,
+        status: { $in: ['ACTIVE', 'ENROLLED'] },
+        validUntil: { $gte: new Date() },
+      }).select('itemId').lean();
+      unlockedItemIds = new Set(entitlements.map((e) => e.itemId.toString()));
+    }
+
+    const tests = rawTests.map((t) => {
+      const testCourseId = t.courseId?._id ? t.courseId._id.toString() : t.courseId ? t.courseId.toString() : null;
+      const isUnlocked = Boolean(
+        isAdmin ||
+        t.isDemoFree ||
+        unlockedItemIds.has(t._id.toString()) ||
+        (testCourseId && unlockedItemIds.has(testCourseId))
+      );
+      return {
+        ...t,
+        isUnlocked,
+        paperPdfUrl: isUnlocked ? attachMediaTokenIfLocal(t.paperPdfUrl, req.user?._id || 'public') : '',
+        solutionPdfUrl: isUnlocked ? attachMediaTokenIfLocal(t.solutionPdfUrl, req.user?._id || 'public') : '',
+      };
+    });
 
     return sendSuccess(res, 'Mock tests retrieved', {
       tests,
@@ -34,34 +71,49 @@ const getMockTests = async (req, res, next) => {
   }
 };
 
-// Public/Student: Get mock test overview by slug
+// Public/Student: Get mock test overview by slug or ID
 const getMockTestBySlug = async (req, res, next) => {
   try {
     const { slug } = req.params;
-    const test = await MockTest.findOne({ slug, isPublished: true })
-      .populate('courseId', 'title slug fee thumbnail');
+    const isAdmin = req.user && ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role);
+    const isObjectId = /^[0-9a-fA-F]{24}$/.test(slug);
+    const idOrSlug = isObjectId ? { $or: [{ slug }, { _id: slug }] } : { slug };
+    const query = isAdmin ? idOrSlug : { ...idOrSlug, isPublished: true };
+    const test = await MockTest.findOne(query)
+      .populate('courseId', 'title slug fee thumbnail')
+      .lean();
 
     if (!test) {
       return sendError(res, 'Mock test not found', 404);
     }
 
-    let isUnlocked = test.isDemoFree;
+    let isUnlocked = Boolean(test.isDemoFree);
     if (req.user) {
-      if (['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
+      if (isAdmin) {
         isUnlocked = true;
-      } else if (test.courseId) {
+      } else {
+        const lookupIds = [test._id];
+        if (test.courseId?._id) lookupIds.push(test.courseId._id);
         const entitlement = await Entitlement.findOne({
           studentId: req.user._id,
-          itemId: test.courseId._id,
+          itemId: { $in: lookupIds },
           isActive: true,
+          status: { $in: ['ACTIVE', 'ENROLLED'] },
           validUntil: { $gte: new Date() },
         });
         if (entitlement) isUnlocked = true;
       }
     }
 
+    const sanitizedTest = {
+      ...test,
+      isUnlocked,
+      paperPdfUrl: isUnlocked ? attachMediaTokenIfLocal(test.paperPdfUrl, req.user?._id || 'public') : '',
+      solutionPdfUrl: isUnlocked ? attachMediaTokenIfLocal(test.solutionPdfUrl, req.user?._id || 'public') : '',
+    };
+
     return sendSuccess(res, 'Mock test details retrieved', {
-      test,
+      test: sanitizedTest,
       isUnlocked,
     });
   } catch (error) {
@@ -87,6 +139,8 @@ const createMockTest = async (req, res, next) => {
       isDemoFree,
       price,
       instructions,
+      maxAttempts,
+      negativeMarkingEnabled,
     } = req.body;
 
     const testSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
@@ -113,6 +167,8 @@ const createMockTest = async (req, res, next) => {
       paperPdfName: req.body.paperPdfName || '',
       solutionPdfUrl: req.body.solutionPdfUrl || '',
       solutionPdfName: req.body.solutionPdfName || '',
+      maxAttempts: maxAttempts !== undefined ? Number(maxAttempts) : 0,
+      negativeMarkingEnabled: negativeMarkingEnabled !== undefined ? Boolean(negativeMarkingEnabled) : true,
       instructions: instructions || [
         'Each question has four options with only one correct response.',
         'Negative marks apply for incorrect answers.',
@@ -371,6 +427,94 @@ const bulkUploadQuestions = async (req, res, next) => {
   }
 };
 
+// Public/Student: Get mock test leaderboard
+const getMockTestLeaderboard = async (req, res, next) => {
+  try {
+    const { mockTestId } = req.params;
+    const requestingStudentId = req.user._id.toString();
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role);
+
+    const mockTest = await MockTest.findById(mockTestId).lean();
+    if (!mockTest || !mockTest.isPublished) {
+      return sendError(res, 'Mock test not found', 404);
+    }
+
+    // Best attempt per student (sort by score desc, time asc, then submittedAt asc before grouping)
+    const leaderboard = await ExamAttempt.aggregate([
+      { $match: { mockTestId: new mongoose.Types.ObjectId(mockTestId), status: 'SUBMITTED' } },
+      { $sort: { score: -1, timeSpentSeconds: 1, submittedAt: 1 } },
+      {
+        $group: {
+          _id: '$studentId',
+          bestScore: { $first: '$score' },
+          totalMarks: { $first: '$totalMarks' },
+          accuracyPercentage: { $first: '$accuracyPercentage' },
+          timeSpentSeconds: { $first: '$timeSpentSeconds' },
+          submittedAt: { $first: '$submittedAt' },
+          attemptId: { $first: '$_id' },
+        },
+      },
+      { $sort: { bestScore: -1, timeSpentSeconds: 1 } },
+      { $limit: 50 },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'student',
+        },
+      },
+      { $unwind: '$student' },
+      {
+        $project: {
+          _id: 0,
+          studentId: '$_id',
+          name: '$student.name',
+          studentIdCode: '$student.studentId',
+          bestScore: 1,
+          totalMarks: 1,
+          accuracyPercentage: 1,
+          timeSpentSeconds: 1,
+          submittedAt: 1,
+        },
+      },
+    ]);
+
+    // Mask names: show full name only for self and admins
+    const ranked = leaderboard.map((entry, index) => {
+      const isSelf = entry.studentId.toString() === requestingStudentId;
+      const nameParts = (entry.name || 'Student').split(' ');
+      const maskedName = isAdmin || isSelf
+        ? entry.name
+        : `${nameParts[0]} ${'*'.repeat(Math.max(1, (nameParts[1] || '').length) || 3)}`;
+      return {
+        rank: index + 1,
+        name: maskedName,
+        studentIdCode: isAdmin || isSelf ? (entry.studentIdCode || '—') : '—',
+        bestScore: entry.bestScore,
+        totalMarks: entry.totalMarks,
+        accuracyPercentage: entry.accuracyPercentage,
+        timeSpentSeconds: entry.timeSpentSeconds,
+        isSelf,
+      };
+    });
+
+    // Find requesting student's own rank if not in top 50
+    const selfRank = ranked.find(r => r.isSelf);
+
+    const totalParticipants = await ExamAttempt.distinct('studentId', { mockTestId: mockTest._id, status: 'SUBMITTED' }).then(arr => arr.length);
+
+    return sendSuccess(res, 'Leaderboard retrieved', {
+      mockTest: { title: mockTest.title, totalMarks: mockTest.totalMarks },
+      leaderboard: ranked,
+      selfRank: selfRank || null,
+      totalParticipants,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   getMockTests,
   getMockTestBySlug,
@@ -383,6 +527,7 @@ module.exports = {
   getAdminMockTestQuestions,
   updateQuestion,
   deleteQuestion,
+  getMockTestLeaderboard,
 };
 
 

@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { courseService } from '../../services';
+import { useToast } from '../../context/ToastContext';
+import { LessonMediaPlayer } from '../../components/courses/LessonMediaPlayer';
 import {
   PlayCircle,
   CheckCircle2,
@@ -15,10 +17,28 @@ import {
 
 export const CoursePlayerPage = () => {
   const { courseId } = useParams();
+  const { error: toastError } = useToast();
   const [course, setCourse] = useState(null);
   const [lessons, setLessons] = useState([]);
   const [activeLesson, setActiveLesson] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  const selectLessonForPlayback = useCallback(async (lesson) => {
+    if (!lesson || !lesson.isUnlocked) {
+      toastError('This lesson requires an active course enrolment.');
+      return;
+    }
+    try {
+      const pbRes = await courseService.getLessonPlayback(lesson._id);
+      if (pbRes?.success && pbRes.data?.lesson) {
+        setActiveLesson({ ...lesson, ...pbRes.data.lesson, isUnlocked: true });
+      } else {
+        setActiveLesson(lesson);
+      }
+    } catch (err) {
+      toastError(err.message || 'Unable to authorize lesson playback');
+    }
+  }, [toastError]);
 
   useEffect(() => {
     const fetchLessons = async () => {
@@ -26,9 +46,13 @@ export const CoursePlayerPage = () => {
         const res = await courseService.getCourseLessons(courseId);
         if (res.success && res.data) {
           setCourse(res.data.course);
-          setLessons(res.data.lessons || []);
-          if (res.data.lessons?.length > 0) {
-            setActiveLesson(res.data.lessons[0]);
+          const list = res.data.lessons || [];
+          setLessons(list);
+          const firstUnlocked = list.find((l) => l.isUnlocked || l.isPreview);
+          if (firstUnlocked) {
+            await selectLessonForPlayback(firstUnlocked);
+          } else if (list.length > 0) {
+            setActiveLesson(list[0]);
           }
         }
       } catch (err) {
@@ -38,7 +62,7 @@ export const CoursePlayerPage = () => {
       }
     };
     fetchLessons();
-  }, [courseId]);
+  }, [courseId, selectLessonForPlayback]);
 
   if (loading) {
     return (
@@ -52,21 +76,27 @@ export const CoursePlayerPage = () => {
   const currentIdx = lessons.findIndex(l => l._id === activeLesson?._id);
 
   const handleNext = () => {
-    if (currentIdx < lessons.length - 1) {
-      setActiveLesson(lessons[currentIdx + 1]);
+    for (let i = currentIdx + 1; i < lessons.length; i += 1) {
+      if (lessons[i].isUnlocked) {
+        selectLessonForPlayback(lessons[i]);
+        return;
+      }
     }
   };
 
   const handlePrev = () => {
-    if (currentIdx > 0) {
-      setActiveLesson(lessons[currentIdx - 1]);
+    for (let i = currentIdx - 1; i >= 0; i -= 1) {
+      if (lessons[i].isUnlocked) {
+        selectLessonForPlayback(lessons[i]);
+        return;
+      }
     }
   };
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Top Breadcrumb */}
-      <div className="flex items-center justify-between">
+      <div className="shrink-0 flex items-center justify-between">
         <Link
           to="/student/my-courses"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-600 hover:text-[#12356B]"
@@ -79,25 +109,19 @@ export const CoursePlayerPage = () => {
       </div>
 
       {/* Main Player Grid */}
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Video Player Box */}
         <div className="lg:col-span-8 space-y-4">
           <div className="bg-slate-900 rounded-3xl p-4 sm:p-6 text-white shadow-xl space-y-4">
-            <div className="aspect-video w-full bg-black rounded-2xl overflow-hidden shadow-inner">
-              <video
-                key={activeLesson?._id}
-                src={activeLesson?.videoUrl || 'https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4'}
-                controls
-                controlsList="nodownload"
-                autoPlay
-                className="w-full h-full object-contain"
-              />
-            </div>
+            <LessonMediaPlayer lesson={activeLesson} autoPlay />
 
             {/* Video Controls & Title */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2 border-t border-white/10">
               <div>
                 <span className="text-[10px] font-bold text-[#F4B942] uppercase tracking-wider block">
+                  {activeLesson?.subject ? `${activeLesson.subject} • ` : ''}
+                  {activeLesson?.chapter ? `${activeLesson.chapter} • ` : ''}
                   {activeLesson?.moduleTitle}
                 </span>
                 <h2 className="text-lg font-bold font-heading text-white">
@@ -160,22 +184,26 @@ export const CoursePlayerPage = () => {
               return (
                 <div
                   key={lesson._id}
-                  onClick={() => setActiveLesson(lesson)}
-                  className={`p-3.5 rounded-2xl border text-xs transition-all cursor-pointer flex items-center justify-between gap-3 ${
+                  onClick={() => lesson.isUnlocked && selectLessonForPlayback(lesson)}
+                  className={`p-3.5 rounded-2xl border text-xs transition-all flex items-center justify-between gap-3 ${
                     isActive
-                      ? 'bg-[#12356B] text-white border-[#12356B] shadow-md shadow-[#12356B]/20'
-                      : 'bg-slate-50 hover:bg-[#EAF3FF] border-slate-200 text-slate-700'
+                      ? 'bg-[#12356B] text-white border-[#12356B] shadow-md shadow-[#12356B]/20 cursor-pointer'
+                      : lesson.isUnlocked
+                      ? 'bg-slate-50 hover:bg-[#EAF3FF] border-slate-200 text-slate-700 cursor-pointer'
+                      : 'bg-slate-50/60 border-slate-200/70 text-slate-400 opacity-75 cursor-not-allowed'
                   }`}
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <div className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
-                      isActive ? 'bg-white/20 text-[#F4B942]' : 'bg-blue-100 text-[#1769D2]'
+                      isActive ? 'bg-white/20 text-[#F4B942]' : lesson.isUnlocked ? 'bg-blue-100 text-[#1769D2]' : 'bg-slate-200 text-slate-400'
                     }`}>
-                      <PlayCircle className="w-4 h-4" />
+                      {lesson.isUnlocked ? <PlayCircle className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
                     </div>
                     <div className="min-w-0">
                       <p className="font-bold truncate">{lesson.title}</p>
                       <p className={`text-[10px] truncate ${isActive ? 'text-blue-200' : 'text-slate-400'}`}>
+                        {lesson.subject ? `${lesson.subject} • ` : ''}
+                        {lesson.chapter ? `${lesson.chapter} • ` : ''}
                         {lesson.moduleTitle}
                       </p>
                     </div>
@@ -189,6 +217,7 @@ export const CoursePlayerPage = () => {
             })}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

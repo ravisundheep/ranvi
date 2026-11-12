@@ -8,6 +8,8 @@ export const AdminStudentsPage = () => {
   const [students, setStudents] = useState([]);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [page, setPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, pages: 1 });
   const [loading, setLoading] = useState(true);
   const [resetModalStudent, setResetModalStudent] = useState(null);
   const [resetReason, setResetReason] = useState('Legitimate student phone/laptop replacement');
@@ -16,13 +18,16 @@ export const AdminStudentsPage = () => {
   const fetchStudents = async () => {
     try {
       setLoading(true);
-      const params = { search, limit: 50 };
+      const params = { search, page, limit: 25 };
       if (statusFilter === 'ACTIVE') params.isActive = 'true';
       if (statusFilter === 'SUSPENDED') params.isActive = 'false';
 
       const res = await adminService.getStudents(params);
       if (res.success && res.data) {
         setStudents(res.data.students || []);
+        if (res.data.pagination) {
+          setPagination(res.data.pagination);
+        }
       }
     } catch (err) {
       console.error(err);
@@ -33,16 +38,16 @@ export const AdminStudentsPage = () => {
 
   useEffect(() => {
     fetchStudents();
-  }, [search, statusFilter]);
+  }, [search, statusFilter, page]);
 
   // Real-time synchronization for student registrations and status updates
   useRealtimeEvent('student:registered', useCallback(() => {
     fetchStudents();
-  }, [search, statusFilter]));
+  }, [search, statusFilter, page]));
 
   useRealtimeEvent('admin:student_updated', useCallback(() => {
     fetchStudents();
-  }, [search, statusFilter]));
+  }, [search, statusFilter, page]));
 
   const handleResetDevice = async () => {
     if (!resetModalStudent) return;
@@ -72,8 +77,8 @@ export const AdminStudentsPage = () => {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-[#12356B] font-heading">
             Student Accounts & Single-Device Control
@@ -87,7 +92,10 @@ export const AdminStudentsPage = () => {
           {/* Status Filter */}
           <select
             value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
+            onChange={(e) => {
+              setStatusFilter(e.target.value);
+              setPage(1);
+            }}
             className="px-3 py-2 rounded-xl border border-slate-200 text-xs font-bold bg-white text-slate-700 shadow-2xs outline-none focus:border-[#1769D2]"
           >
             <option value="ALL">All Statuses</option>
@@ -101,7 +109,10 @@ export const AdminStudentsPage = () => {
             <input
               type="text"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Search by name, email, phone..."
               className="w-full pl-9 pr-8 py-2 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#1769D2]"
             />
@@ -135,11 +146,13 @@ export const AdminStudentsPage = () => {
       </div>
 
       {/* Student Accounts Table */}
-      <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs">
             <thead>
               <tr className="bg-slate-50 text-[#12356B] border-b border-slate-200">
+                <th className="p-4 font-bold">Student ID</th>
                 <th className="p-4 font-bold">Student Name</th>
                 <th className="p-4 font-bold">Contact Info</th>
                 <th className="p-4 font-bold">Target Exam</th>
@@ -151,13 +164,16 @@ export const AdminStudentsPage = () => {
             <tbody className="divide-y divide-slate-100 text-slate-700">
               {students.length === 0 && !loading && (
                 <tr>
-                  <td colSpan={6} className="p-8 text-center text-slate-500 font-medium">
+                  <td colSpan={7} className="p-8 text-center text-slate-500 font-medium">
                     No student accounts found matching your criteria.
                   </td>
                 </tr>
               )}
               {students.map((student) => (
                 <tr key={student._id} className="hover:bg-slate-50">
+                  <td className="p-4 font-bold text-[11px] text-[#1769D2] font-mono tracking-wide">
+                    {student.studentId || '—'}
+                  </td>
                   <td className="p-4 font-bold text-[#12356B]">
                     {student.name}
                   </td>
@@ -211,6 +227,33 @@ export const AdminStudentsPage = () => {
             </tbody>
           </table>
         </div>
+
+        {pagination.pages > 1 && (
+          <div className="flex items-center justify-between px-4 py-3 border-t border-slate-100 text-xs bg-slate-50/50">
+            <span className="text-slate-500 font-semibold">
+              Showing page {pagination.page} of {pagination.pages} ({pagination.total} students)
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={page <= 1}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-700 disabled:opacity-40 cursor-pointer"
+              >
+                Previous
+              </button>
+              <button
+                type="button"
+                disabled={page >= pagination.pages}
+                onClick={() => setPage((p) => Math.min(pagination.pages, p + 1))}
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white font-bold text-slate-700 disabled:opacity-40 cursor-pointer"
+              >
+                Next
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
       </div>
 
       {/* Device Reset Modal */}

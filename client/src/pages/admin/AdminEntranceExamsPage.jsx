@@ -249,9 +249,9 @@ export const AdminEntranceExamsPage = () => {
   });
 
   return (
-    <div className="space-y-6">
+    <div className="md:flex-1 md:min-h-0 flex flex-col gap-3">
       {/* Top Banner & Header */}
-      <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="shrink-0 bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-black text-[#1769D2] uppercase tracking-wider mb-1">
             <GraduationCap className="w-4 h-4" /> Academic Admissions Hub
@@ -283,34 +283,8 @@ export const AdminEntranceExamsPage = () => {
         </div>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <p className="text-xs font-bold text-slate-500 uppercase">Total Programs</p>
-          <p className="text-2xl font-black text-[#0B1E3D] mt-1">{exams.length}</p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <p className="text-xs font-bold text-emerald-600 uppercase">Active Programs</p>
-          <p className="text-2xl font-black text-emerald-700 mt-1">
-            {exams.filter((e) => e.isActive).length}
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <p className="text-xs font-bold text-[#1769D2] uppercase">National Level</p>
-          <p className="text-2xl font-black text-[#1769D2] mt-1">
-            {exams.filter((e) => e.badge?.includes('National')).length}
-          </p>
-        </div>
-        <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
-          <p className="text-xs font-bold text-amber-600 uppercase">State Level (AP/TG)</p>
-          <p className="text-2xl font-black text-amber-600 mt-1">
-            {exams.filter((e) => e.badge?.includes('State')).length}
-          </p>
-        </div>
-      </div>
-
       {/* Search & Category Filter Bar */}
-      <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
+      <div className="shrink-0 bg-white rounded-2xl p-4 border border-slate-200 shadow-xs space-y-3">
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
           <div className="relative flex-1">
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3" />
@@ -354,7 +328,8 @@ export const AdminEntranceExamsPage = () => {
       </div>
 
       {/* Programs List Table / Cards */}
-      <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+      <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
+        <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
         {loading ? (
           <div className="p-16 text-center">
             <div className="w-10 h-10 border-4 border-[#1769D2] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
@@ -482,6 +457,7 @@ export const AdminEntranceExamsPage = () => {
             </table>
           </div>
         )}
+      </div>
       </div>
 
       {/* Delete Confirmation Modal */}

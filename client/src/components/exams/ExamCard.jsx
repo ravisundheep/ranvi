@@ -76,7 +76,11 @@ export const ExamCard = ({ test, onTakeTest, isUnlocked }) => {
       <div className="pt-3.5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3">
         <div className="text-xs">
           <span className="text-slate-400 block text-[10px] font-bold">Negative Marking</span>
-          <span className="font-extrabold text-rose-600">-{test.negativeMarkingPerQuestion || 0.25} per wrong</span>
+          <span className="font-extrabold text-rose-600">
+            {Number(test.negativeMarkingPerQuestion ?? 0.25) > 0
+              ? `-${test.negativeMarkingPerQuestion ?? 0.25} per wrong`
+              : 'No negative marks'}
+          </span>
         </div>
 
         <div className="flex items-center gap-2">

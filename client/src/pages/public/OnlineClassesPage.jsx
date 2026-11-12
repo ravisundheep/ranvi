@@ -1,30 +1,47 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { PageBanner } from '../../components/common/PageBanner';
+import { liveClassService } from '../../services';
 import { Video, Calendar, Clock, CheckCircle2, ShieldCheck, ArrowRight, ExternalLink, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 export const OnlineClassesPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [batches, setBatches] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const sampleBatches = [
-    { program: 'JAIIB Master Batch 2026', type: 'Evening Regular', time: '7:30 PM - 9:00 PM (Daily)', faculty: 'Prof. Rajesh Sharma (Ex-AGM SBI)', platform: 'Zoom Live' },
-    { program: 'CAIIB Executive Batch', type: 'Late Evening', time: '8:30 PM - 10:00 PM (Mon-Sat)', faculty: 'Shri Arvind Narayanan (Ex-Chief Mgr PNB)', platform: 'Zoom Live' },
-    { program: 'IBPS & SBI PO Foundation', type: 'Morning Intensive', time: '9:00 AM - 12:00 PM (Mon-Fri)', faculty: 'Kavita Iyer & Anurag Mishra', platform: 'Zoom Live' },
-    { program: 'SSC CGL / CHSL Selection Batch', type: 'Daytime Batch', time: '10:00 AM - 1:00 PM (Daily)', faculty: 'Deepak Saxena', platform: 'Zoom Live' },
-    { program: 'JEE Main Engineering Batch', type: 'Weekend Crash Course', time: '9:00 AM - 1:00 PM (Sat-Sun)', faculty: 'Dr. Suresh Varma (IIT-M Alum)', platform: 'Zoom Live' },
-    { program: 'NEET-UG Medical Masterclass', type: 'Daily Morning', time: '6:30 AM - 8:30 AM (Daily)', faculty: 'Dr. A. Meenakshi (AIIMS Specialist)', platform: 'Zoom Live' },
-  ];
+  useEffect(() => {
+    let isMounted = true;
+    const fetchSchedule = async () => {
+      try {
+        setLoading(true);
+        const res = await liveClassService.getPublicSchedule();
+        if (isMounted && res?.success && Array.isArray(res.data)) {
+          setBatches(res.data);
+        }
+      } catch (err) {
+        console.error('Failed to load live class schedule:', err);
+      } finally {
+        if (isMounted) setLoading(false);
+      }
+    };
+    fetchSchedule();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const filteredBatches = useMemo(() => {
-    if (!searchQuery.trim()) return sampleBatches;
+    if (!searchQuery.trim()) return batches;
     const q = searchQuery.trim().toLowerCase();
-    return sampleBatches.filter(
+    return batches.filter(
       (b) =>
-        b.program.toLowerCase().includes(q) ||
-        b.type.toLowerCase().includes(q) ||
-        b.faculty.toLowerCase().includes(q)
+        (b.title || '').toLowerCase().includes(q) ||
+        (b.courseId?.title || '').toLowerCase().includes(q) ||
+        (b.batchName || '').toLowerCase().includes(q) ||
+        (b.subject || '').toLowerCase().includes(q) ||
+        (b.facultyName || '').toLowerCase().includes(q)
     );
-  }, [searchQuery]);
+  }, [batches, searchQuery]);
 
   return (
     <div className="space-y-12 pb-20">
@@ -122,22 +139,42 @@ export const OnlineClassesPage = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 text-slate-700">
-                {filteredBatches.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-500 font-medium">
+                      Loading live batch timetable...
+                    </td>
+                  </tr>
+                ) : filteredBatches.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-8 text-center text-slate-400 font-medium">
-                      No live batches found matching "{searchQuery}".
+                      {searchQuery
+                        ? `No live batches found matching "${searchQuery}".`
+                        : 'No upcoming live class sessions are scheduled at the moment.'}
                     </td>
                   </tr>
                 ) : (
-                  filteredBatches.map((b, i) => (
-                    <tr key={i} className="hover:bg-slate-50 transition-colors">
-                      <td className="p-3.5 font-bold text-[#12356B]">{b.program}</td>
-                      <td className="p-3.5">{b.type}</td>
-                      <td className="p-3.5 font-semibold">{b.time}</td>
-                      <td className="p-3.5">{b.faculty}</td>
+                  filteredBatches.map((b) => (
+                    <tr key={b._id} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3.5 font-bold text-[#12356B]">
+                        <div>{b.courseId?.title || b.title}</div>
+                        {b.courseId?.title && b.title !== b.courseId.title && (
+                          <div className="text-[11px] font-normal text-slate-500">{b.title}</div>
+                        )}
+                      </td>
+                      <td className="p-3.5">{b.batchName || b.subject || 'Live Batch'}</td>
+                      <td className="p-3.5 font-semibold">
+                        {b.scheduledDate ? new Date(b.scheduledDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' }) : ''}{' '}
+                        {b.startTime ? `• ${b.startTime}` : ''}
+                      </td>
+                      <td className="p-3.5">{b.facultyName || 'Ranvi Senior Faculty'}</td>
                       <td className="p-3.5">
-                        <span className="bg-blue-50 text-[#1769D2] font-bold px-2 py-1 rounded">
-                          {b.platform}
+                        <span className={`font-bold px-2 py-1 rounded ${
+                          b.status === 'LIVE'
+                            ? 'bg-rose-50 text-rose-700'
+                            : 'bg-blue-50 text-[#1769D2]'
+                        }`}>
+                          {b.status === 'LIVE' ? 'Zoom Live Now' : 'Zoom Live'}
                         </span>
                       </td>
                     </tr>

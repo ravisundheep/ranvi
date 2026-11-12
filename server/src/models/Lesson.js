@@ -11,6 +11,16 @@ const LessonSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  subject: {
+    type: String,
+    trim: true,
+    default: '',
+  },
+  chapter: {
+    type: String,
+    trim: true,
+    default: '',
+  },
   title: {
     type: String,
     required: true,
@@ -58,5 +68,6 @@ const LessonSchema = new mongoose.Schema({
 });
 
 LessonSchema.index({ courseId: 1, sortOrder: 1 });
+LessonSchema.index({ courseId: 1, subject: 1, chapter: 1 });
 
 module.exports = mongoose.model('Lesson', LessonSchema);
