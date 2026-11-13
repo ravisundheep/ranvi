@@ -4,12 +4,19 @@ const ApprovalRequestSchema = new mongoose.Schema(
   {
     requestType: {
       type: String,
-      enum: ['FEE_CHANGE', 'DISCOUNT_OVERRIDE', 'MANUAL_ENTITLEMENT', 'REFUND_REQUEST'],
+      enum: [
+        'FEE_CHANGE',
+        'DISCOUNT_OVERRIDE',
+        'MANUAL_ENTITLEMENT',
+        'REFUND_REQUEST',
+        'REFERRAL_PAYOUT',
+        'REFERRAL_REWARD_ADJUSTMENT',
+      ],
       required: true,
     },
     resourceModel: {
       type: String,
-      enum: ['Course', 'MockTest', 'Enrollment', 'Entitlement', 'User'],
+      enum: ['Course', 'MockTest', 'Enrollment', 'Entitlement', 'User', 'PayoutRequest'],
       required: true,
     },
     resourceId: {

@@ -34,7 +34,7 @@ export const AdminLiveClassesPage = () => {
     try {
       const [classRes, courseRes] = await Promise.all([
         liveClassService.getAllLiveClasses({ limit: 50 }),
-        courseService.getCourses({ limit: 50 }),
+        courseService.getCourses({ limit: 100, includeUnpublished: 'true', facultyAssigned: 'true' }),
       ]);
       if (classRes.success && classRes.data) {
         setClasses(classRes.data.classes || []);

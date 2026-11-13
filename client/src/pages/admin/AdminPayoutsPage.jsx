@@ -14,15 +14,23 @@ import {
   AlertCircle,
   Check,
   X,
+  Gift,
 } from 'lucide-react';
 
 export const AdminPayoutsPage = () => {
   const { success, error: toastError } = useToast();
 
+  const [activeTab, setActiveTab] = useState('PAYOUTS'); // 'PAYOUTS' | 'REWARDS'
   const [payouts, setPayouts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [search, setSearch] = useState('');
+
+  // Referral Rewards Verification State
+  const [rewards, setRewards] = useState([]);
+  const [rewardsLoading, setRewardsLoading] = useState(false);
+  const [rewardStatusFilter, setRewardStatusFilter] = useState('PENDING');
+  const [releasingId, setReleasingId] = useState(null);
 
   // Action Modal State
   const [selectedPayout, setSelectedPayout] = useState(null);
@@ -50,6 +58,43 @@ export const AdminPayoutsPage = () => {
   useEffect(() => {
     fetchPayouts();
   }, [statusFilter]);
+
+  const fetchRewards = async () => {
+    try {
+      setRewardsLoading(true);
+      const res = await walletService.getAdminReferralRewards({
+        status: rewardStatusFilter !== 'ALL' ? rewardStatusFilter : undefined,
+      });
+      if (res?.success && res.data) {
+        setRewards(res.data.rewards || []);
+      }
+    } catch (err) {
+      toastError(err.message || 'Failed to load referral rewards');
+    } finally {
+      setRewardsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'REWARDS') {
+      fetchRewards();
+    }
+  }, [activeTab, rewardStatusFilter]);
+
+  const handleReleaseReward = async (reward) => {
+    try {
+      setReleasingId(reward._id);
+      const res = await walletService.releaseReferralReward(reward._id);
+      if (res?.success) {
+        success(`₹${reward.amount} referral reward released to ${reward.userId?.name || 'referrer'}`);
+        fetchRewards();
+      }
+    } catch (err) {
+      toastError(err.message || 'Failed to release referral reward');
+    } finally {
+      setReleasingId(null);
+    }
+  };
 
   const openProcessModal = (payout, type) => {
     setSelectedPayout(payout);
@@ -96,34 +141,87 @@ export const AdminPayoutsPage = () => {
     return pid.includes(q) || name.includes(q) || sid.includes(q) || upi.includes(q) || acc.includes(q);
   });
 
+  const filteredRewards = rewards.filter((r) => {
+    if (!search.trim()) return true;
+    const q = search.trim().toLowerCase();
+    const tid = (r.transactionId || '').toLowerCase();
+    const rName = (r.userId?.name || '').toLowerCase();
+    const rSid = (r.userId?.studentId || '').toLowerCase();
+    const refName = (r.referredUserId?.name || '').toLowerCase();
+    const refSid = (r.referredUserId?.studentId || '').toLowerCase();
+    return tid.includes(q) || rName.includes(q) || rSid.includes(q) || refName.includes(q) || refSid.includes(q);
+  });
+
   return (
     <div className="md:flex-1 md:min-h-0 flex flex-col gap-6">
       {/* Header */}
-      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
-            Student Referral Payouts & Disbursements
-          </h1>
-          <p className="text-xs text-slate-500 mt-0.5">
-            Process student reward withdrawals, verify UPI/bank details, enter UTR references, and handle refunds.
-          </p>
-        </div>
+      <div className="shrink-0 bg-white p-6 rounded-3xl border border-slate-200 shadow-xs flex flex-col gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-black text-slate-900 font-serif">
+              Student Referral Rewards &amp; Payouts
+            </h1>
+            <p className="text-xs text-slate-500 mt-0.5">
+              Verify pending ₹100 referral rewards after refund checks, and process student withdrawal disbursements (7 working days SLA).
+            </p>
+          </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          {['ALL', 'PENDING', 'APPROVED', 'PROCESSED', 'REJECTED'].map((st) => (
+          <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-2xl self-start sm:self-auto">
             <button
-              key={st}
               type="button"
-              onClick={() => setStatusFilter(st)}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
-                statusFilter === st
-                  ? 'bg-[#0B2545] text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              onClick={() => setActiveTab('PAYOUTS')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'PAYOUTS'
+                  ? 'bg-[#0B2545] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
               }`}
             >
-              {st === 'ALL' ? 'All Status' : st}
+              <Building className="w-3.5 h-3.5" /> Payout Requests
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setActiveTab('REWARDS')}
+              className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 ${
+                activeTab === 'REWARDS'
+                  ? 'bg-[#0B2545] text-white shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              <Gift className="w-3.5 h-3.5" /> Referral Verification
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+          {activeTab === 'PAYOUTS'
+            ? ['ALL', 'PENDING', 'APPROVED', 'PROCESSED', 'REJECTED'].map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    statusFilter === st
+                      ? 'bg-[#0B2545] text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {st === 'ALL' ? 'All Status' : st}
+                </button>
+              ))
+            : ['PENDING', 'COMPLETED', 'REVERSED', 'ALL'].map((st) => (
+                <button
+                  key={st}
+                  type="button"
+                  onClick={() => setRewardStatusFilter(st)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer ${
+                    rewardStatusFilter === st
+                      ? 'bg-[#0B2545] text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {st === 'ALL' ? 'All Rewards' : st}
+                </button>
+              ))}
         </div>
       </div>
 
@@ -141,9 +239,87 @@ export const AdminPayoutsPage = () => {
         </div>
       </div>
 
-      {/* Payouts Table */}
+      {/* Content Table */}
       <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none pr-1">
-        {loading ? (
+        {activeTab === 'REWARDS' ? (
+          rewardsLoading ? (
+            <div className="py-20 flex flex-col items-center justify-center">
+              <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
+              <p className="text-xs font-bold text-slate-500">Loading referral rewards...</p>
+            </div>
+          ) : filteredRewards.length === 0 ? (
+            <div className="bg-white p-12 text-center rounded-3xl border border-slate-200">
+              <Gift className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <h3 className="text-base font-bold text-slate-700">No referral rewards found</h3>
+              <p className="text-xs text-slate-400 mt-1">Fixed ₹100 referral rewards from paid enrollments appear here for verification.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left text-xs">
+                  <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-3.5">Txn ID &amp; Date</th>
+                      <th className="p-3.5">Referrer</th>
+                      <th className="p-3.5">Referred Student</th>
+                      <th className="p-3.5">Reward</th>
+                      <th className="p-3.5">Status</th>
+                      <th className="p-3.5 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredRewards.map((r) => (
+                      <tr key={r._id} className="hover:bg-slate-50/70">
+                        <td className="p-3.5">
+                          <div className="font-mono font-bold text-slate-700">{r.transactionId}</div>
+                          <div className="text-[10.5px] text-slate-400">
+                            {new Date(r.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                          </div>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-bold text-slate-900">{r.userId?.name || 'Student'}</div>
+                          <div className="text-[10.5px] text-slate-500">{r.userId?.studentId || r.userId?.email}</div>
+                        </td>
+                        <td className="p-3.5">
+                          <div className="font-semibold text-slate-800">{r.referredUserId?.name || '—'}</div>
+                          <div className="text-[10.5px] text-slate-500">{r.referredUserId?.studentId || r.referredUserId?.email || ''}</div>
+                        </td>
+                        <td className="p-3.5 font-black text-[#0B2545]">₹{r.amount}</td>
+                        <td className="p-3.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase ${
+                            r.status === 'COMPLETED'
+                              ? 'bg-emerald-100 text-emerald-800'
+                              : r.status === 'REVERSED'
+                              ? 'bg-rose-100 text-rose-800'
+                              : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {r.status}
+                          </span>
+                        </td>
+                        <td className="p-3.5 text-right">
+                          {r.status === 'PENDING' ? (
+                            <button
+                              type="button"
+                              disabled={releasingId === r._id}
+                              onClick={() => handleReleaseReward(r)}
+                              className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-lg font-bold text-[11px] transition-colors cursor-pointer"
+                            >
+                              {releasingId === r._id ? 'Releasing...' : 'Verify & Release ₹100'}
+                            </button>
+                          ) : (
+                            <span className="text-[10.5px] text-slate-400 font-medium">
+                              {r.status === 'COMPLETED' ? 'Credited' : 'Reversed'}
+                            </span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        ) : loading ? (
         <div className="py-20 flex flex-col items-center justify-center">
           <div className="w-8 h-8 border-3 border-[#0B2545] border-t-transparent rounded-full animate-spin mb-3" />
           <p className="text-xs font-bold text-slate-500">Loading payout requests...</p>

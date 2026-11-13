@@ -11,5 +11,6 @@ router.post('/save-response/:attemptId', authenticate, enforceSingleDevice, exam
 router.post('/submit/:attemptId', authenticate, enforceSingleDevice, examAttemptController.submitExam);
 router.get('/result/:attemptId', authenticate, enforceSingleDevice, examAttemptController.getAttemptResult);
 router.get('/my-history', authenticate, enforceSingleDevice, examAttemptController.getStudentAttempts);
+router.get('/leaderboard/:mockTestId', authenticate, examAttemptController.getTestLeaderboard);
 
 module.exports = router;

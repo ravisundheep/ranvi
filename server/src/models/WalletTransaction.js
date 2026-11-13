@@ -22,7 +22,7 @@ const WalletTransactionSchema = new mongoose.Schema(
     },
     source: {
       type: String,
-      enum: ['REFERRAL_REWARD', 'COURSE_PURCHASE', 'PAYOUT_WITHDRAWAL', 'ADMIN_ADJUSTMENT'],
+      enum: ['REFERRAL_REWARD', 'REFERRAL_REVERSAL', 'COURSE_PURCHASE', 'PAYOUT_WITHDRAWAL', 'ADMIN_ADJUSTMENT'],
       required: true,
     },
     amount: {
@@ -52,7 +52,7 @@ const WalletTransactionSchema = new mongoose.Schema(
     },
     status: {
       type: String,
-      enum: ['COMPLETED', 'PENDING', 'CANCELLED'],
+      enum: ['COMPLETED', 'PENDING', 'CANCELLED', 'REVERSED'],
       default: 'COMPLETED',
     },
   },

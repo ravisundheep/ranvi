@@ -292,7 +292,7 @@ const getAttemptResult = async (req, res, next) => {
     const studentId = req.user._id;
 
     const attempt = await ExamAttempt.findById(attemptId)
-      .populate('mockTestId', 'title slug totalMarks passMarks durationMinutes showSolutionImmediately');
+      .populate('mockTestId', 'title slug totalMarks passMarks durationMinutes showSolutionImmediately examMode resultPublishAt leaderboardEnabled');
 
     if (!attempt) {
       return sendError(res, 'Exam attempt not found', 404);
@@ -301,6 +301,26 @@ const getAttemptResult = async (req, res, next) => {
     // Verify ownership or staff role
     if (attempt.studentId.toString() !== studentId.toString() && !['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
       return sendError(res, 'Unauthorized access to this result', 403);
+    }
+
+    const isStaff = ['SUPER_ADMIN', 'ADMIN', 'FACULTY'].includes(req.user.role);
+    if (
+      !isStaff &&
+      attempt.mockTestId?.examMode === 'EXAM' &&
+      attempt.mockTestId?.resultPublishAt &&
+      new Date() < new Date(attempt.mockTestId.resultPublishAt)
+    ) {
+      return sendSuccess(res, 'Exam submitted. Results will be published at the scheduled time.', {
+        resultPending: true,
+        resultPublishAt: attempt.mockTestId.resultPublishAt,
+        attempt: {
+          _id: attempt._id,
+          mockTest: attempt.mockTestId,
+          timeSpentSeconds: attempt.timeSpentSeconds,
+          submittedAt: attempt.submittedAt,
+        },
+        questions: [],
+      });
     }
 
     // Fetch questions with explanations
@@ -349,10 +369,78 @@ const getStudentAttempts = async (req, res, next) => {
   try {
     const studentId = req.user._id;
     const attempts = await ExamAttempt.find({ studentId, status: 'SUBMITTED' })
-      .populate('mockTestId', 'title slug division totalMarks passMarks')
+      .populate('mockTestId', 'title slug division totalMarks passMarks examMode resultPublishAt leaderboardEnabled')
       .sort({ submittedAt: -1 });
 
     return sendSuccess(res, 'Student attempts retrieved', attempts);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Get test leaderboard (top scores for a mock test)
+const getTestLeaderboard = async (req, res, next) => {
+  try {
+    const { mockTestId } = req.params;
+    const mockTest = await MockTest.findById(mockTestId)
+      .select('title totalMarks leaderboardEnabled examMode resultPublishAt')
+      .lean();
+
+    if (!mockTest) {
+      return sendError(res, 'Mock test not found', 404);
+    }
+
+    if (mockTest.leaderboardEnabled === false) {
+      return sendSuccess(res, 'Leaderboard is disabled for this test', {
+        enabled: false,
+        entries: [],
+      });
+    }
+
+    if (
+      mockTest.examMode === 'EXAM' &&
+      mockTest.resultPublishAt &&
+      new Date() < new Date(mockTest.resultPublishAt)
+    ) {
+      return sendSuccess(res, 'Leaderboard will be available once results are published', {
+        enabled: false,
+        resultPending: true,
+        resultPublishAt: mockTest.resultPublishAt,
+        entries: [],
+      });
+    }
+
+    const attempts = await ExamAttempt.find({ mockTestId, status: 'SUBMITTED' })
+      .populate('studentId', 'name studentId')
+      .sort({ score: -1, timeSpentSeconds: 1, submittedAt: 1 })
+      .limit(100)
+      .lean();
+
+    const seenStudents = new Set();
+    const entries = [];
+    for (const att of attempts) {
+      const sid = att.studentId?._id?.toString();
+      if (!sid || seenStudents.has(sid)) continue;
+      seenStudents.add(sid);
+      entries.push({
+        rank: entries.length + 1,
+        studentName: att.studentId?.name || 'Student',
+        studentCode: att.studentId?.studentId || '',
+        score: att.score,
+        totalMarks: att.totalMarks,
+        accuracyPercentage: att.accuracyPercentage,
+        timeSpentSeconds: att.timeSpentSeconds,
+        isCurrentUser: sid === req.user._id.toString(),
+      });
+      if (entries.length >= 20) break;
+    }
+
+    return sendSuccess(res, 'Leaderboard retrieved', {
+      enabled: true,
+      mockTestTitle: mockTest.title,
+      totalMarks: mockTest.totalMarks,
+      entries,
+    });
   } catch (error) {
     next(error);
   }
@@ -364,4 +452,5 @@ module.exports = {
   submitExam,
   getAttemptResult,
   getStudentAttempts,
+  getTestLeaderboard,
 };

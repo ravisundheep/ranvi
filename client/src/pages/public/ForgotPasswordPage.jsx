@@ -34,7 +34,7 @@ export const ForgotPasswordPage = () => {
       const res = await authService.sendOtp(email.trim(), 'FORGOT_PASSWORD');
       success(res.message || 'Verification OTP sent to your email.');
       setStep(2);
-      setCooldown(60);
+      setCooldown(30);
     } catch (err) {
       toastError(err.message || 'Failed to send OTP. Please check your email.');
     } finally {

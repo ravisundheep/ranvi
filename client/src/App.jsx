@@ -194,7 +194,7 @@ export function App() {
                   <Route path="dashboard" element={<AdminDashboardPage />} />
                   <Route path="staff" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminStaffPage /></ProtectedPortalRoute>} />
                   <Route path="approvals" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FINANCE_STAFF']}><AdminApprovalsPage /></ProtectedPortalRoute>} />
-                  <Route path="courses" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCoursesPage /></ProtectedPortalRoute>} />
+                  <Route path="courses" element={<ProtectedPortalRoute allowedRoles={['ADMIN', 'FACULTY']}><AdminCoursesPage /></ProtectedPortalRoute>} />
                   <Route path="courses/new" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCourseFormPage /></ProtectedPortalRoute>} />
                   <Route path="courses/:courseId/edit" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminCourseFormPage /></ProtectedPortalRoute>} />
                   <Route path="entrance-exams" element={<ProtectedPortalRoute allowedRoles={['ADMIN']}><AdminEntranceExamsPage /></ProtectedPortalRoute>} />

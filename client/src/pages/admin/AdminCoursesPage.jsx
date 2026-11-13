@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { courseService, adminService } from '../../services';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { useRealtimeEvent } from '../../context/SocketContext';
 import { BookOpen, Plus, Edit, Trash2, Eye, CheckCircle2, XCircle, Filter, MapPin, Search, X, RotateCcw, Tags, FolderTree } from 'lucide-react';
@@ -12,6 +13,7 @@ export const AdminCoursesPage = () => {
   const [selectedState, setSelectedState] = useState('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const { user, isAdmin } = useAuth();
   const { success, error: toastError } = useToast();
 
   // Categories Modal State
@@ -34,6 +36,9 @@ export const AdminCoursesPage = () => {
     try {
       setLoading(true);
       const params = { limit: 100, includeUnpublished: 'true' };
+      if (user?.role === 'FACULTY') {
+        params.facultyAssigned = 'true';
+      }
       if (selectedDivision !== 'ALL') {
         params.division = selectedDivision;
       }
@@ -220,22 +225,24 @@ export const AdminCoursesPage = () => {
             Create, edit, publish, configure pricing, homepage tiles, state associations, and syllabus modules.
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2.5">
-          <button
-            type="button"
-            onClick={handleOpenCategoryModal}
-            className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-[#12356B] text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 transition-all cursor-pointer"
-          >
-            <Tags className="w-4 h-4 text-[#1769D2]" />
-            <span>Manage Categories</span>
-          </button>
-          <Link
-            to="/admin/courses/new"
-            className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
-          >
-            <Plus className="w-4 h-4" /> Add New Course
-          </Link>
-        </div>
+        {isAdmin && (
+          <div className="flex flex-wrap items-center gap-2.5">
+            <button
+              type="button"
+              onClick={handleOpenCategoryModal}
+              className="inline-flex items-center gap-1.5 bg-slate-100 hover:bg-slate-200 text-[#12356B] text-xs font-bold px-3.5 py-2.5 rounded-xl border border-slate-200 transition-all cursor-pointer"
+            >
+              <Tags className="w-4 h-4 text-[#1769D2]" />
+              <span>Manage Categories</span>
+            </button>
+            <Link
+              to="/admin/courses/new"
+              className="inline-flex items-center gap-1.5 bg-[#12356B] hover:bg-[#0e2a56] text-white text-xs font-bold px-4 py-2.5 rounded-xl transition-all shadow-md"
+            >
+              <Plus className="w-4 h-4" /> Add New Course
+            </Link>
+          </div>
+        )}
       </div>
 
       {/* Filter Toolbar */}
@@ -434,20 +441,24 @@ export const AdminCoursesPage = () => {
                         >
                           <Eye className="w-4 h-4" />
                         </Link>
-                        <Link
-                          to={`/admin/courses/${course.slug}/edit`}
-                          className="p-1.5 text-[#1769D2] hover:text-[#0B1E3D] hover:bg-blue-50 rounded-lg inline-block transition-colors"
-                          title="Edit Course Program"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </Link>
-                        <button
-                          onClick={() => handleDeleteCourse(course._id, course.title)}
-                          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg inline-block transition-colors"
-                          title="Delete Course Program"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {isAdmin && (
+                          <>
+                            <Link
+                              to={`/admin/courses/${course.slug}/edit`}
+                              className="p-1.5 text-[#1769D2] hover:text-[#0B1E3D] hover:bg-blue-50 rounded-lg inline-block transition-colors"
+                              title="Edit Course Program"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Link>
+                            <button
+                              onClick={() => handleDeleteCourse(course._id, course.title)}
+                              className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg inline-block transition-colors"
+                              title="Delete Course Program"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </td>
                     </tr>
                   ))

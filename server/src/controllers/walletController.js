@@ -20,32 +20,33 @@ const generatePayoutId = () => {
   return `PAY-${year}-${rand}`;
 };
 
-// Internal Service: Award direct single-level referral reward on first course enrollment
+const FIXED_REFERRAL_REWARD = 100;
+const MIN_WITHDRAWAL_AMOUNT = 500;
+
+// Internal Service: Award fixed ₹100 single-level referral reward (starts as PENDING until verified)
 const processReferralReward = async (buyerId, orderId, orderAmount) => {
   try {
+    if (!orderAmount || Number(orderAmount) <= 0) return null;
+
     const buyer = await User.findById(buyerId);
     if (!buyer || !buyer.referredBy) return null;
 
     // Strict Rule: Single-level direct referral only. Prevent self-referral.
     if (buyer.referredBy.toString() === buyer._id.toString()) return null;
 
-    // Check if referrer already received a reward for this buyer (reward only on first course purchase)
+    // Check if referrer already received a reward for this buyer (reward only on first paid course enrollment)
     const existingReward = await WalletTransaction.findOne({
       referredUserId: buyer._id,
       source: 'REFERRAL_REWARD',
+      status: { $in: ['PENDING', 'COMPLETED'] },
     });
     if (existingReward) return null;
 
     const referrer = await User.findById(buyer.referredBy);
     if (!referrer || !referrer.isActive) return null;
 
-    // 10% direct reward (minimum 100, maximum 2500)
-    const rawReward = Math.round(Number(orderAmount) * 0.10);
-    const rewardAmount = Math.max(100, Math.min(rawReward, 2500));
-
-    const newBalance = (referrer.walletBalance || 0) + rewardAmount;
-    referrer.walletBalance = newBalance;
-    await referrer.save();
+    // Fixed ₹100 reward (no percentage commission), held in PENDING until enrollment/refund verification
+    const rewardAmount = FIXED_REFERRAL_REWARD;
 
     const transaction = await WalletTransaction.create({
       transactionId: generateTransactionId(),
@@ -53,17 +54,17 @@ const processReferralReward = async (buyerId, orderId, orderAmount) => {
       type: 'CREDIT',
       source: 'REFERRAL_REWARD',
       amount: rewardAmount,
-      balanceAfter: newBalance,
+      balanceAfter: referrer.walletBalance || 0,
       orderId,
       referredUserId: buyer._id,
-      description: `Direct referral reward for ${buyer.name}'s first enrollment (Single-level direct referral)`,
-      status: 'COMPLETED',
+      description: `Pending referral reward (₹${rewardAmount}) for ${buyer.name}'s paid enrollment (awaiting verification)`,
+      status: 'PENDING',
     });
 
     await Notification.create({
       recipientId: referrer._id,
-      title: `🎉 Referral Reward Credited: ₹${rewardAmount}`,
-      message: `Your invited friend ${buyer.name} enrolled in a course! ₹${rewardAmount} direct referral reward has been credited to your Ranvi wallet.`,
+      title: `🕒 Pending Referral Reward: ₹${rewardAmount}`,
+      message: `Your invited friend ${buyer.name} completed a paid enrollment! ₹${rewardAmount} is in Pending Rewards and will move to Available Balance once verification & refund checks complete.`,
       type: 'PAYMENT',
       link: '/student/wallet',
     });
@@ -71,6 +72,62 @@ const processReferralReward = async (buyerId, orderId, orderAmount) => {
     return transaction;
   } catch (error) {
     console.error('Error processing referral reward:', error);
+    return null;
+  }
+};
+
+// Internal Service: Reverse referral reward if the referred enrollment is refunded or cancelled
+const reverseReferralReward = async (orderId, buyerId, reason = 'Enrollment refunded or cancelled') => {
+  try {
+    const queryConditions = [];
+    if (orderId) queryConditions.push({ orderId });
+    if (buyerId) queryConditions.push({ referredUserId: buyerId });
+    if (queryConditions.length === 0) return null;
+
+    const rewardTxn = await WalletTransaction.findOne({
+      source: 'REFERRAL_REWARD',
+      status: { $in: ['PENDING', 'COMPLETED'] },
+      $or: queryConditions,
+    });
+    if (!rewardTxn) return null;
+
+    const wasCompleted = rewardTxn.status === 'COMPLETED';
+    rewardTxn.status = 'REVERSED';
+    rewardTxn.description = `${rewardTxn.description} [REVERSED: ${reason}]`;
+    await rewardTxn.save();
+
+    const referrer = await User.findById(rewardTxn.userId);
+    if (referrer && wasCompleted) {
+      referrer.walletBalance = Math.max(0, (referrer.walletBalance || 0) - rewardTxn.amount);
+      await referrer.save();
+
+      await WalletTransaction.create({
+        transactionId: generateTransactionId(),
+        userId: referrer._id,
+        type: 'DEBIT',
+        source: 'REFERRAL_REVERSAL',
+        amount: rewardTxn.amount,
+        balanceAfter: referrer.walletBalance,
+        orderId: rewardTxn.orderId,
+        referredUserId: rewardTxn.referredUserId,
+        description: `Referral reward reversed (${rewardTxn.transactionId}): ${reason}`,
+        status: 'COMPLETED',
+      });
+    }
+
+    if (referrer) {
+      await Notification.create({
+        recipientId: referrer._id,
+        title: `⚠️ Referral Reward Reversed: ₹${rewardTxn.amount}`,
+        message: `Your referral reward (${rewardTxn.transactionId}) of ₹${rewardTxn.amount} was reversed due to: ${reason}.`,
+        type: 'PAYMENT',
+        link: '/student/wallet',
+      });
+    }
+
+    return rewardTxn;
+  } catch (error) {
+    console.error('Error reversing referral reward:', error);
     return null;
   }
 };
@@ -90,7 +147,7 @@ const getMyWallet = async (req, res, next) => {
       await user.save();
     }
 
-    const [transactions, payoutRequests, referredCount, totalEarnedResult, totalWithdrawnResult] = await Promise.all([
+    const [transactions, payoutRequests, referredCount, totalEarnedResult, pendingRewardsResult, totalWithdrawnResult] = await Promise.all([
       WalletTransaction.find({ userId })
         .populate('referredUserId', 'name studentId')
         .sort({ createdAt: -1 })
@@ -106,20 +163,28 @@ const getMyWallet = async (req, res, next) => {
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
       WalletTransaction.aggregate([
+        { $match: { userId, source: 'REFERRAL_REWARD', status: 'PENDING' } },
+        { $group: { _id: null, total: { $sum: '$amount' } } },
+      ]),
+      WalletTransaction.aggregate([
         { $match: { userId, source: 'PAYOUT_WITHDRAWAL', status: 'COMPLETED' } },
         { $group: { _id: null, total: { $sum: '$amount' } } },
       ]),
     ]);
 
     const totalEarned = totalEarnedResult.length > 0 ? totalEarnedResult[0].total : 0;
+    const pendingRewards = pendingRewardsResult.length > 0 ? pendingRewardsResult[0].total : 0;
     const totalWithdrawn = totalWithdrawnResult.length > 0 ? totalWithdrawnResult[0].total : 0;
 
     return sendSuccess(res, 'Wallet details retrieved', {
       walletBalance: user.walletBalance || 0,
       referralCode: user.referralCode,
       payoutDetails: user.payoutDetails || {},
+      fixedRewardAmount: FIXED_REFERRAL_REWARD,
+      minWithdrawalAmount: MIN_WITHDRAWAL_AMOUNT,
       stats: {
         totalEarned,
+        pendingRewards,
         totalWithdrawn,
         referredCount,
         pendingPayoutsCount: payoutRequests.filter((p) => p.status === 'PENDING').length,
@@ -139,8 +204,8 @@ const requestPayout = async (req, res, next) => {
     const { amount, payoutMethod, paymentDetails } = req.body;
 
     const withdrawAmount = Number(amount);
-    if (!withdrawAmount || withdrawAmount < 100) {
-      return sendError(res, 'Minimum payout withdrawal threshold is ₹100', 400);
+    if (!withdrawAmount || withdrawAmount < MIN_WITHDRAWAL_AMOUNT) {
+      return sendError(res, `Minimum payout withdrawal threshold is ₹${MIN_WITHDRAWAL_AMOUNT}`, 400);
     }
 
     const user = await User.findById(userId);
@@ -206,7 +271,7 @@ const requestPayout = async (req, res, next) => {
       status: 'PENDING',
     });
 
-    return sendSuccess(res, 'Payout request submitted successfully. Institute finance will verify and disburse shortly.', payout, 201);
+    return sendSuccess(res, 'Payout request submitted successfully. Eligible requests are processed within 7 working days after verification.', payout, 201);
   } catch (error) {
     next(error);
   }
@@ -261,6 +326,13 @@ const processAdminPayout = async (req, res, next) => {
     }
 
     if (status === 'PROCESSED') {
+      if (req.user.role === 'FINANCE_STAFF' && payout.status === 'PENDING') {
+        return sendError(
+          res,
+          'Referral payouts require Admin / Super Admin approval (APPROVED status) before Finance Staff can disburse funds.',
+          403
+        );
+      }
       if (!referenceNumber || !referenceNumber.trim()) {
         return sendError(res, 'Bank transaction UTR or reference number is required to mark as processed', 400);
       }
@@ -340,10 +412,84 @@ const processAdminPayout = async (req, res, next) => {
   }
 };
 
+// Admin / Finance: List referral rewards (PENDING / COMPLETED / REVERSED) for verification
+const getAdminReferralRewards = async (req, res, next) => {
+  try {
+    const { status } = req.query;
+    const query = { source: 'REFERRAL_REWARD' };
+    if (status && status !== 'ALL') query.status = status;
+
+    const rewards = await WalletTransaction.find(query)
+      .populate('userId', 'name email studentId')
+      .populate('referredUserId', 'name email studentId')
+      .sort({ createdAt: -1 })
+      .limit(100)
+      .lean();
+
+    return sendSuccess(res, 'Referral rewards retrieved', { rewards });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Admin / Finance: Verify & release a PENDING referral reward into Available Balance
+const releaseReferralReward = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const txn = await WalletTransaction.findById(id);
+    if (!txn || txn.source !== 'REFERRAL_REWARD') {
+      return sendError(res, 'Referral reward transaction not found', 404);
+    }
+    if (txn.status !== 'PENDING') {
+      return sendError(res, `Reward is already ${txn.status}`, 409);
+    }
+
+    const referrer = await User.findById(txn.userId);
+    if (!referrer) {
+      return sendError(res, 'Referrer account not found', 404);
+    }
+
+    referrer.walletBalance = (referrer.walletBalance || 0) + txn.amount;
+    await referrer.save();
+
+    txn.status = 'COMPLETED';
+    txn.balanceAfter = referrer.walletBalance;
+    txn.description = txn.description.replace('(awaiting verification)', '(verified & released)');
+    await txn.save();
+
+    await Notification.create({
+      recipientId: referrer._id,
+      title: `🎉 Referral Reward Released: ₹${txn.amount}`,
+      message: `Your ₹${txn.amount} referral reward (${txn.transactionId}) has been verified and moved to your Available Wallet Balance.`,
+      type: 'PAYMENT',
+      link: '/student/wallet',
+    });
+
+    await AuditLog.create({
+      userId: req.user._id,
+      userEmail: req.user.email,
+      userRole: req.user.role,
+      action: 'REFERRAL_REWARD_RELEASED',
+      resource: 'WalletTransaction',
+      resourceId: txn._id.toString(),
+      category: 'FINANCIAL',
+      isImmutable: true,
+      details: { transactionId: txn.transactionId, amount: txn.amount, referrerId: referrer._id },
+    });
+
+    return sendSuccess(res, `₹${txn.amount} referral reward verified and released to student wallet`, txn);
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   processReferralReward,
+  reverseReferralReward,
   getMyWallet,
   requestPayout,
   getAdminPayouts,
   processAdminPayout,
+  getAdminReferralRewards,
+  releaseReferralReward,
 };

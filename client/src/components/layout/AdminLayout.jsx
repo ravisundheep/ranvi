@@ -55,7 +55,7 @@ export const AdminLayout = () => {
     { name: 'Overview', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF'] },
     { name: 'Staff & Role Access', path: '/admin/staff', icon: UserCog, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Approvals Queue', path: '/admin/approvals', icon: ClipboardCheck, roles: ['SUPER_ADMIN', 'ADMIN', 'FINANCE_STAFF'] },
-    { name: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN'] },
+    { name: 'Course Management', path: '/admin/courses', icon: BookOpen, roles: ['SUPER_ADMIN', 'ADMIN', 'FACULTY'] },
     { name: 'Tuition Programs', path: '/admin/tuitions', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN'] },
     { name: 'Enrollments & Admissions', path: '/admin/enrollments', icon: Receipt, roles: ['SUPER_ADMIN', 'ADMIN', 'SUPPORT_STAFF', 'FINANCE_STAFF'] },
     { name: 'Entrance Exam Programs', path: '/admin/entrance-exams', icon: GraduationCap, roles: ['SUPER_ADMIN', 'ADMIN'] },

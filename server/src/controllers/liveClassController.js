@@ -6,6 +6,13 @@ const { isValidZoomUrl } = require('../utils/zoomValidator');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { broadcastLiveClassUpdate } = require('../utils/socketService');
 
+const assertFacultyCourseAccess = (user, courseId) => {
+  if (!user || user.role !== 'FACULTY') return true;
+  const assigned = Array.isArray(user.assignedCourses) ? user.assignedCourses.map(String) : [];
+  if (assigned.length === 0 || !courseId) return false;
+  return assigned.includes(String(courseId));
+};
+
 // Public: Get sanitized live class schedule (no Zoom URL or passcode exposed)
 const getPublicLiveClassSchedule = async (req, res, next) => {
   try {
@@ -55,12 +62,27 @@ const getStudentLiveClasses = async (req, res, next) => {
   }
 };
 
-// Admin: Get all live classes with filtering
+// Admin / Faculty: Get all live classes with filtering (Faculty scoped to assignedCourses)
 const getAllLiveClasses = async (req, res, next) => {
   try {
     const { courseId, status, page = 1, limit = 20 } = req.query;
     const query = {};
-    if (courseId) query.courseId = courseId;
+    if (req.user && req.user.role === 'FACULTY') {
+      const assigned = Array.isArray(req.user.assignedCourses) ? req.user.assignedCourses.map(String) : [];
+      if (courseId) {
+        if (!assigned.includes(String(courseId))) {
+          return sendSuccess(res, 'Live classes retrieved', {
+            classes: [],
+            pagination: { total: 0, page: 1, pages: 1 },
+          });
+        }
+        query.courseId = courseId;
+      } else {
+        query.courseId = { $in: assigned };
+      }
+    } else if (courseId) {
+      query.courseId = courseId;
+    }
     if (status) query.status = status;
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
@@ -104,6 +126,10 @@ const createLiveClass = async (req, res, next) => {
 
     if (!title || !courseId || !facultyName || !scheduledDate || !startTime || !zoomMeetingUrl) {
       return sendError(res, 'Please provide title, course, faculty, scheduled date, time, and Zoom meeting URL', 400);
+    }
+
+    if (!assertFacultyCourseAccess(req.user, courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only schedule live classes for their assigned courses.', 403);
     }
 
     if (!isValidZoomUrl(zoomMeetingUrl)) {
@@ -156,20 +182,26 @@ const createLiveClass = async (req, res, next) => {
   }
 };
 
-// Admin: Update live class
+// Admin / Faculty: Update live class
 const updateLiveClass = async (req, res, next) => {
   try {
     const { id } = req.params;
     const { zoomMeetingUrl } = req.body;
+
+    const existing = await LiveClass.findById(id);
+    if (!existing) {
+      return sendError(res, 'Live class not found', 404);
+    }
+    const targetCourseId = req.body.courseId || existing.courseId;
+    if (!assertFacultyCourseAccess(req.user, existing.courseId) || !assertFacultyCourseAccess(req.user, targetCourseId)) {
+      return sendError(res, 'Forbidden: Faculty may only update live classes for their assigned courses.', 403);
+    }
 
     if (zoomMeetingUrl && !isValidZoomUrl(zoomMeetingUrl)) {
       return sendError(res, 'Invalid Zoom meeting URL. Must be a valid zoom.us link.', 400);
     }
 
     const liveClass = await LiveClass.findByIdAndUpdate(id, req.body, { new: true });
-    if (!liveClass) {
-      return sendError(res, 'Live class not found', 404);
-    }
 
     broadcastLiveClassUpdate('UPDATE', liveClass);
     return sendSuccess(res, 'Live class updated successfully', liveClass);
@@ -178,13 +210,16 @@ const updateLiveClass = async (req, res, next) => {
   }
 };
 
-// Admin: Cancel live class
+// Admin / Faculty: Cancel live class
 const cancelLiveClass = async (req, res, next) => {
   try {
     const { id } = req.params;
     const liveClass = await LiveClass.findById(id).populate('courseId');
     if (!liveClass) {
       return sendError(res, 'Live class not found', 404);
+    }
+    if (!assertFacultyCourseAccess(req.user, liveClass.courseId?._id || liveClass.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only cancel live classes for their assigned courses.', 403);
     }
 
     liveClass.status = 'CANCELLED';
@@ -214,14 +249,18 @@ const cancelLiveClass = async (req, res, next) => {
   }
 };
 
-// Admin: Delete live class
+// Admin / Faculty: Delete live class
 const deleteLiveClass = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const liveClass = await LiveClass.findByIdAndDelete(id);
-    if (!liveClass) {
+    const existing = await LiveClass.findById(id);
+    if (!existing) {
       return sendError(res, 'Live class not found', 404);
     }
+    if (!assertFacultyCourseAccess(req.user, existing.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only delete live classes for their assigned courses.', 403);
+    }
+    const liveClass = await LiveClass.findByIdAndDelete(id);
     broadcastLiveClassUpdate('DELETE', liveClass);
     return sendSuccess(res, 'Live class deleted successfully');
   } catch (error) {

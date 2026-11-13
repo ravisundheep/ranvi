@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { enrollmentService } from '../../services';
+import { useToast } from '../../context/ToastContext';
 import {
   Receipt,
   GraduationCap,
@@ -14,34 +15,59 @@ import {
   ChevronRight,
   CreditCard,
   User,
+  RotateCcw,
 } from 'lucide-react';
 
 export const MyEnrollmentsPage = () => {
+  const { success, error: toastError } = useToast();
   const [enrollments, setEnrollments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReceipt, setSelectedReceipt] = useState(null);
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [refundTarget, setRefundTarget] = useState(null);
+  const [refundReason, setRefundReason] = useState('');
+  const [submittingRefund, setSubmittingRefund] = useState(false);
+
+  const fetchEnrollments = async () => {
+    try {
+      setLoading(true);
+      const res = await enrollmentService.getMyEnrollments();
+      if (res?.success && res.data) {
+        setEnrollments(Array.isArray(res.data) ? res.data : res.data.enrollments || []);
+      }
+    } catch (err) {
+      console.error('Failed to load my enrollments', err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    let isMounted = true;
-    const fetchEnrollments = async () => {
-      try {
-        setLoading(true);
-        const res = await enrollmentService.getMyEnrollments();
-        if (isMounted && res?.success && res.data) {
-          setEnrollments(Array.isArray(res.data) ? res.data : res.data.enrollments || []);
-        }
-      } catch (err) {
-        console.error('Failed to load my enrollments', err);
-      } finally {
-        if (isMounted) setLoading(false);
-      }
-    };
     fetchEnrollments();
-    return () => {
-      isMounted = false;
-    };
   }, []);
+
+  const handleSubmitRefund = async (e) => {
+    e.preventDefault();
+    if (!refundTarget) return;
+    if (!refundReason.trim()) {
+      toastError('Please enter a reason for your refund / cancellation request.');
+      return;
+    }
+    try {
+      setSubmittingRefund(true);
+      const res = await enrollmentService.requestRefund(refundTarget._id, refundReason.trim());
+      if (res?.success) {
+        success('Refund / cancellation request submitted for Admin & Finance review.');
+        setRefundTarget(null);
+        setRefundReason('');
+        fetchEnrollments();
+      }
+    } catch (err) {
+      toastError(err.message || 'Failed to submit refund request.');
+    } finally {
+      setSubmittingRefund(false);
+    }
+  };
 
   const filteredEnrollments = enrollments.filter((e) => {
     if (statusFilter === 'ALL') return true;
@@ -168,7 +194,34 @@ export const MyEnrollmentsPage = () => {
                 </div>
 
                 {/* Right Actions */}
-                <div className="flex items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                <div className="flex flex-wrap items-center gap-2.5 shrink-0 pt-2 md:pt-0 border-t md:border-t-0 border-slate-100">
+                  {enr.refundRequest?.status === 'PENDING' ? (
+                    <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-[11px] font-bold">
+                      <Clock className="w-3.5 h-3.5" /> Refund Pending
+                    </span>
+                  ) : enr.refundRequest?.status === 'REJECTED' ? (
+                    <span
+                      title={enr.refundRequest.reviewedNote || 'Refund request rejected'}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-[11px] font-bold"
+                    >
+                      <AlertCircle className="w-3.5 h-3.5" /> Refund Rejected
+                    </span>
+                  ) : (
+                    isEnrolled && isPaid && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setRefundTarget(enr);
+                          setRefundReason('');
+                        }}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-rose-200 text-rose-700 hover:bg-rose-50 text-xs font-bold transition-colors cursor-pointer"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        <span>Request Refund</span>
+                      </button>
+                    )
+                  )}
+
                   <button
                     type="button"
                     onClick={() => setSelectedReceipt(enr)}
@@ -320,6 +373,67 @@ export const MyEnrollmentsPage = () => {
                 Print Receipt
               </button>
             </div>
+          </div>
+        </div>
+      )}
+      {/* Refund / Cancellation Request Modal */}
+      {refundTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl w-full max-w-md p-6 shadow-2xl border border-slate-200 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-base font-black text-[#0B2545] font-serif">
+                Request Refund / Cancellation
+              </h3>
+              <button
+                type="button"
+                onClick={() => setRefundTarget(null)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100 text-xs space-y-1">
+              <div className="font-bold text-slate-900">{refundTarget.courseId?.title || 'Program'}</div>
+              <div className="text-slate-500 font-mono">{refundTarget.enrollmentId} • Paid ₹{(refundTarget.amountPaid || refundTarget.finalAmount || 0).toLocaleString('en-IN')}</div>
+            </div>
+
+            <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-2xl text-[11px] text-amber-900 leading-relaxed">
+              Admin &amp; Finance will review your course access, material downloads, and class attendance before approving. Approved refunds automatically revoke course access and adjust any linked referral reward.
+            </div>
+
+            <form onSubmit={handleSubmitRefund} className="space-y-3">
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Reason for Refund / Cancellation *
+                </label>
+                <textarea
+                  rows={3}
+                  required
+                  value={refundReason}
+                  onChange={(e) => setRefundReason(e.target.value)}
+                  placeholder="Explain why you are requesting a refund or cancellation..."
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:border-[#1769D2]"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setRefundTarget(null)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 text-slate-600 text-xs font-bold hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingRefund}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 disabled:opacity-50 text-white text-xs font-bold cursor-pointer"
+                >
+                  {submittingRefund ? 'Submitting...' : 'Submit Refund Request'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

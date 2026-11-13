@@ -18,6 +18,9 @@ export const AdminApprovalsPage = () => {
     requestType: 'FEE_CHANGE',
     courseId: '',
     proposedFee: 0,
+    proposedOriginalPrice: 0,
+    targetId: '',
+    targetTitle: '',
     reason: '',
   });
 
@@ -51,22 +54,37 @@ export const AdminApprovalsPage = () => {
 
   const handleCreateProposal = async (e) => {
     e.preventDefault();
+    const isCourseReq = ['FEE_CHANGE', 'DISCOUNT_OVERRIDE'].includes(proposalForm.requestType);
     const targetCourse = courses.find((c) => c._id === proposalForm.courseId);
-    if (!targetCourse) return;
+    if (isCourseReq && !targetCourse) return;
+
+    const resourceModel = isCourseReq
+      ? 'Course'
+      : proposalForm.requestType === 'REFUND_REQUEST'
+      ? 'Enrollment'
+      : proposalForm.requestType === 'REFERRAL_PAYOUT'
+      ? 'PayoutRequest'
+      : 'User';
+
+    const payload = isCourseReq
+      ? proposalForm.requestType === 'DISCOUNT_OVERRIDE'
+        ? { fee: Number(proposalForm.proposedFee), originalPrice: Number(proposalForm.proposedOriginalPrice || targetCourse.originalPrice || proposalForm.proposedFee) }
+        : { fee: Number(proposalForm.proposedFee) }
+      : { amount: Number(proposalForm.proposedFee) };
 
     try {
       const res = await staffService.createApproval({
-        requestType: 'FEE_CHANGE',
-        resourceModel: 'Course',
-        resourceId: targetCourse._id,
-        targetTitle: targetCourse.title,
-        payload: { fee: Number(proposalForm.proposedFee) },
+        requestType: proposalForm.requestType,
+        resourceModel,
+        resourceId: isCourseReq ? targetCourse._id : proposalForm.targetId.trim(),
+        targetTitle: isCourseReq ? targetCourse.title : proposalForm.targetTitle.trim() || proposalForm.requestType,
+        payload,
         reason: proposalForm.reason,
       });
       if (res?.success) {
-        success('Fee change proposal submitted for Admin/Super Admin approval');
+        success('Approval proposal submitted for Admin / Super Admin review');
         setCreateOpen(false);
-        setProposalForm((p) => ({ ...p, reason: '' }));
+        setProposalForm((p) => ({ ...p, reason: '', targetId: '', targetTitle: '' }));
         fetchApprovals();
       }
     } catch (err) {
@@ -104,7 +122,7 @@ export const AdminApprovalsPage = () => {
           onClick={() => setCreateOpen(true)}
           className="inline-flex items-center gap-2 bg-[#0B1E3D] hover:bg-[#12356B] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-md cursor-pointer self-start sm:self-auto"
         >
-          <Plus className="w-4 h-4 text-[#F4B942]" /> Submit Fee Proposal
+          <Plus className="w-4 h-4 text-[#F4B942]" /> Submit Approval Proposal
         </button>
       </div>
 
@@ -221,38 +239,115 @@ export const AdminApprovalsPage = () => {
         <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-6 max-w-md w-full space-y-4 border border-slate-200 shadow-2xl text-xs">
             <div className="flex items-center justify-between">
-              <h3 className="text-base font-bold text-[#12356B]">Submit Course Fee Change Proposal</h3>
+              <h3 className="text-base font-bold text-[#12356B]">Submit Financial / Policy Approval Proposal</h3>
               <button type="button" onClick={() => setCreateOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={handleCreateProposal} className="space-y-3">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Course / Tuition Program</label>
+                <label className="block font-bold text-slate-700 mb-1">Approval Request Type</label>
                 <select
-                  value={proposalForm.courseId}
-                  onChange={(e) => {
-                    const c = courses.find((x) => x._id === e.target.value);
-                    setProposalForm({ ...proposalForm, courseId: e.target.value, proposedFee: c?.fee ?? 0 });
-                  }}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                  value={proposalForm.requestType}
+                  onChange={(e) => setProposalForm({ ...proposalForm, requestType: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white font-semibold"
                 >
-                  {courses.map((c) => (
-                    <option key={c._id} value={c._id}>{c.title} (Current: ₹{c.fee})</option>
-                  ))}
+                  <option value="FEE_CHANGE">Fee Change (Course / Tuition)</option>
+                  <option value="DISCOUNT_OVERRIDE">Discount Override (MRP vs Offer Fee)</option>
+                  <option value="REFUND_REQUEST">Enrollment Refund Request</option>
+                  <option value="REFERRAL_PAYOUT">Referral Payout Approval</option>
+                  <option value="REFERRAL_REWARD_ADJUSTMENT">Referral Wallet Adjustment</option>
                 </select>
               </div>
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Proposed New Fee (₹)</label>
-                <input
-                  type="number"
-                  min={0}
-                  required
-                  value={proposalForm.proposedFee}
-                  onChange={(e) => setProposalForm({ ...proposalForm, proposedFee: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                />
-              </div>
+
+              {['FEE_CHANGE', 'DISCOUNT_OVERRIDE'].includes(proposalForm.requestType) ? (
+                <>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Course / Tuition Program</label>
+                    <select
+                      value={proposalForm.courseId}
+                      onChange={(e) => {
+                        const c = courses.find((x) => x._id === e.target.value);
+                        setProposalForm({
+                          ...proposalForm,
+                          courseId: e.target.value,
+                          proposedFee: c?.fee ?? 0,
+                          proposedOriginalPrice: c?.originalPrice ?? c?.fee ?? 0,
+                        });
+                      }}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                    >
+                      {courses.map((c) => (
+                        <option key={c._id} value={c._id}>{c.title} (Current: ₹{c.fee})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={proposalForm.requestType === 'DISCOUNT_OVERRIDE' ? 'grid grid-cols-2 gap-2' : ''}>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Proposed Fee (₹)</label>
+                      <input
+                        type="number"
+                        min={0}
+                        required
+                        value={proposalForm.proposedFee}
+                        onChange={(e) => setProposalForm({ ...proposalForm, proposedFee: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                      />
+                    </div>
+                    {proposalForm.requestType === 'DISCOUNT_OVERRIDE' && (
+                      <div>
+                        <label className="block font-bold text-slate-700 mb-1">Original MRP (₹)</label>
+                        <input
+                          type="number"
+                          min={0}
+                          required
+                          value={proposalForm.proposedOriginalPrice}
+                          onChange={(e) => setProposalForm({ ...proposalForm, proposedOriginalPrice: e.target.value })}
+                          className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                        />
+                      </div>
+                    )}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">
+                      Target Record ObjectId ({proposalForm.requestType === 'REFUND_REQUEST' ? 'Enrollment _id' : proposalForm.requestType === 'REFERRAL_PAYOUT' ? 'PayoutRequest _id' : 'Student User _id'}) *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={proposalForm.targetId}
+                      onChange={(e) => setProposalForm({ ...proposalForm, targetId: e.target.value })}
+                      placeholder="24-char MongoDB ObjectId"
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Reference Title</label>
+                      <input
+                        type="text"
+                        value={proposalForm.targetTitle}
+                        onChange={(e) => setProposalForm({ ...proposalForm, targetTitle: e.target.value })}
+                        placeholder="e.g. ENR-2026-1042 or PAY-2026-1002"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                      />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-slate-700 mb-1">Amount (₹)</label>
+                      <input
+                        type="number"
+                        required
+                        value={proposalForm.proposedFee}
+                        onChange={(e) => setProposalForm({ ...proposalForm, proposedFee: e.target.value })}
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200"
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Audit Justification Reason *</label>
                 <textarea

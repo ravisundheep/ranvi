@@ -203,6 +203,9 @@ export const examService = {
   getAttemptResult: async (attemptId) => {
     return api.get(`/exam-attempts/result/${attemptId}`);
   },
+  getLeaderboard: async (mockTestId) => {
+    return api.get(`/exam-attempts/leaderboard/${mockTestId}`);
+  },
   getMyExamHistory: async () => {
     return api.get('/exam-attempts/my-history');
   },
@@ -417,6 +420,9 @@ export const enrollmentService = {
   getMyEnrollmentById: async (id) => {
     return api.get(`/enrollments/my/${id}`);
   },
+  requestRefund: async (id, reason) => {
+    return api.post(`/enrollments/${id}/refund-request`, { reason });
+  },
   getAdminEnrollments: async (params = {}) => {
     return api.get('/enrollments/admin', { params });
   },
@@ -493,6 +499,12 @@ export const walletService = {
   },
   processAdminPayout: async (id, data) => {
     return api.put(`/wallet/admin/payouts/${id}`, data);
+  },
+  getAdminReferralRewards: async (params = {}) => {
+    return api.get('/wallet/admin/referral-rewards', { params });
+  },
+  releaseReferralReward: async (id) => {
+    return api.put(`/wallet/admin/referral-rewards/${id}/release`);
   },
 };
 

@@ -78,8 +78,8 @@ export const StudentWalletPage = () => {
   const handleRequestPayout = async (e) => {
     e.preventDefault();
     const amountNum = Number(payoutAmount);
-    if (!amountNum || amountNum < 100) {
-      toastError('Minimum payout withdrawal amount is ₹100');
+    if (!amountNum || amountNum < 500) {
+      toastError('Minimum payout withdrawal amount is ₹500');
       return;
     }
     if (amountNum > (walletData?.walletBalance || 0)) {
@@ -138,17 +138,17 @@ export const StudentWalletPage = () => {
         <button
           type="button"
           onClick={() => setPayoutModalOpen(true)}
-          disabled={balance < 100}
+          disabled={balance < 500}
           className="inline-flex items-center gap-2 px-4 py-2.5 bg-[#0B2545] hover:bg-[#1E293B] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed self-start sm:self-auto"
         >
           <ArrowUpRight className="w-4 h-4" />
-          Request Payout (Min ₹100)
+          Request Payout (Min ₹500)
         </button>
       </div>
 
       <div className="md:flex-1 md:min-h-0 portal-scroll max-h-[65vh] md:max-h-none space-y-6 pr-1">
       {/* Refer & Earn Share Banner */}
-      <div className="bg-gradient-to-r from-[#0B2545] via-[#12356B] to-[#1769D2] text-white p-6 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden">
+      <div className="bg-gradient-to-r from-[#0B2545] via-[#12356B] to-[#1769D2] text-white p-6 sm:p-7 rounded-3xl shadow-sm relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="max-w-xl space-y-3 relative z-10">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/10 backdrop-blur-md rounded-full text-[11px] font-bold border border-white/20">
             <Sparkles className="w-3.5 h-3.5 text-amber-300" /> Single-Level Direct Referral Reward
@@ -157,11 +157,11 @@ export const StudentWalletPage = () => {
             Invite Friends & Banking Aspirants to Ranvi Institutions
           </h2>
           <p className="text-xs text-blue-100 leading-relaxed">
-            Earn <strong>10% direct reward</strong> on their first program enrolment. Multi-level or pyramid structures are strictly forbidden; rewards are clean, compliant, and directly credited to your wallet.
+            Earn a fixed <strong>₹100 reward</strong> on their first paid course enrolment. Multi-level or pyramid structures are strictly forbidden; rewards are verified by Admin/Finance before moving to Available Balance.
           </p>
 
           {/* Referral Code Bar */}
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2">
+          <div className="flex flex-wrap items-center gap-2 pt-2">
             <div className="bg-white/10 backdrop-blur-md px-3.5 py-2 rounded-xl border border-white/25 flex items-center justify-between gap-3">
               <span className="text-[10px] uppercase font-bold text-blue-200">Your Referral Code:</span>
               <span className="font-mono font-black text-sm tracking-widest text-amber-300">{referralCode}</span>
@@ -174,16 +174,41 @@ export const StudentWalletPage = () => {
               {copied ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
               {copied ? 'Link Copied!' : 'Copy Referral Link'}
             </button>
+            <a
+              href={`https://wa.me/?text=${encodeURIComponent(`Join Ranvi Institutions using my referral link and start your exam preparation: ${referralLink}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all"
+            >
+              <Share2 className="w-4 h-4" />
+              Share on WhatsApp
+            </a>
           </div>
         </div>
+        {referralLink && (
+          <div className="bg-white p-2.5 rounded-2xl shadow-md flex flex-col items-center gap-1 self-start md:self-center shrink-0 relative z-10">
+            <img
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(referralLink)}`}
+              alt="Referral QR Code"
+              className="w-24 h-24 rounded-lg"
+            />
+            <span className="text-[10px] font-bold text-[#0B2545] uppercase tracking-wider">Scan to Join</span>
+          </div>
+        )}
       </div>
 
       {/* Key Metric Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3 sm:gap-4">
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
-          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Wallet Balance</span>
+          <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">Available Balance</span>
           <div className="text-2xl font-black text-emerald-600 font-serif">₹{balance.toLocaleString('en-IN')}</div>
-          <p className="text-[10px] text-slate-400">Available for payout or courses</p>
+          <p className="text-[10px] text-slate-400">Available for payout (min ₹500)</p>
+        </div>
+
+        <div className="bg-amber-50/70 p-5 rounded-2xl border border-amber-200 shadow-2xs space-y-1">
+          <span className="text-[11px] font-bold text-amber-700 uppercase tracking-wider block">Pending Rewards</span>
+          <div className="text-2xl font-black text-amber-700 font-serif">₹{(stats.pendingRewards || 0).toLocaleString('en-IN')}</div>
+          <p className="text-[10px] text-amber-700/80">Awaiting admin verification</p>
         </div>
 
         <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-2xs space-y-1">
@@ -321,13 +346,16 @@ export const StudentWalletPage = () => {
                   )}
 
                   {p.adminNote && (
-                    <div className="text-[10px] text-slate-500 italic">
-                      Note: {p.adminNote}
+                    <div className={`text-[10.5px] p-1.5 rounded ${
+                      p.status === 'REJECTED' ? 'bg-rose-50 text-rose-700' : 'bg-amber-50 text-amber-800'
+                    }`}>
+                      {p.status === 'REJECTED' ? 'Reason: ' : 'Status / Delay Note: '}{p.adminNote}
                     </div>
                   )}
 
-                  <div className="text-[10px] text-slate-400 pt-0.5">
-                    {new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  <div className="text-[10px] text-slate-400 pt-0.5 flex items-center justify-between">
+                    <span>{new Date(p.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+                    {p.status === 'PENDING' && <span className="text-amber-600 font-semibold">SLA: 7 Working Days</span>}
                   </div>
                 </div>
               ))
@@ -345,7 +373,7 @@ export const StudentWalletPage = () => {
               Request Wallet Payout Withdrawal
             </h3>
             <p className="text-xs text-slate-500">
-              Funds will be disbursed to your verified bank account or UPI ID within 24-48 business hours.
+              Minimum withdrawal is ₹500. Funds will be disbursed to your verified bank account or UPI ID within <strong className="text-slate-700">7 working days</strong>.
             </p>
 
             <form onSubmit={handleRequestPayout} className="space-y-4 text-xs">
@@ -356,11 +384,11 @@ export const StudentWalletPage = () => {
                 <input
                   type="number"
                   required
-                  min={100}
+                  min={500}
                   max={balance}
                   value={payoutAmount}
                   onChange={(e) => setPayoutAmount(e.target.value)}
-                  placeholder="Min ₹100"
+                  placeholder="Min ₹500"
                   className="w-full px-3 py-2 rounded-xl border border-slate-200 font-bold text-sm"
                 />
               </div>

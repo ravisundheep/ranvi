@@ -6,10 +6,12 @@ const Payment = require('../models/Payment');
 const Entitlement = require('../models/Entitlement');
 const Notification = require('../models/Notification');
 const AuditLog = require('../models/AuditLog');
+const ApprovalRequest = require('../models/ApprovalRequest');
 const env = require('../config/env');
 const { razorpayInstance, isRazorpayConfigured, verifySignature } = require('../config/razorpay');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { emitEnrollmentChange, emitNewOrderPlaced, emitAdminStatsUpdate } = require('../utils/socketService');
+const { reverseReferralReward } = require('./walletController');
 
 // Student: Initiate enrollment & create gateway checkout intent
 const createEnrollmentIntent = async (req, res) => {
@@ -478,7 +480,33 @@ const getMyEnrollments = async (req, res) => {
       .sort({ createdAt: -1 })
       .lean();
 
-    return sendSuccess(res, 'Student enrollments retrieved', enrollments);
+    const refundRequests = await ApprovalRequest.find({
+      requestedBy: studentId,
+      requestType: 'REFUND_REQUEST',
+    })
+      .select('resourceId status reviewedNote createdAt')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const refundMap = new Map();
+    for (const rr of refundRequests) {
+      const key = String(rr.resourceId);
+      if (!refundMap.has(key)) {
+        refundMap.set(key, rr);
+      }
+    }
+
+    const enriched = enrollments.map((e) => {
+      const rr = refundMap.get(String(e._id));
+      return {
+        ...e,
+        refundRequest: rr
+          ? { status: rr.status, reviewedNote: rr.reviewedNote || '', createdAt: rr.createdAt }
+          : null,
+      };
+    });
+
+    return sendSuccess(res, 'Student enrollments retrieved', enriched);
   } catch (error) {
     console.error('Error fetching my enrollments:', error);
     return sendError(res, 'Failed to retrieve enrollments', 500);
@@ -591,9 +619,44 @@ const updateAdminEnrollmentStatus = async (req, res) => {
       return sendError(res, 'Invalid enrollment status', 400);
     }
 
-    const enrollment = await Enrollment.findById(id);
+    const enrollment = await Enrollment.findById(id).populate('courseId', 'title');
     if (!enrollment) {
       return sendError(res, 'Enrollment not found', 404);
+    }
+
+    // Refunds require Maker-Checker Approval unless executed directly by SUPER_ADMIN
+    if (enrollmentStatus === 'REFUNDED' && req.user.role !== 'SUPER_ADMIN') {
+      const approval = await ApprovalRequest.create({
+        requestType: 'REFUND_REQUEST',
+        resourceModel: 'Enrollment',
+        resourceId: enrollment._id,
+        targetTitle: `${enrollment.enrollmentId} (${enrollment.courseId?.title || 'Course'})`,
+        payload: { enrollmentId: enrollment.enrollmentId, refundAmount: enrollment.finalAmount },
+        reason: notes?.trim() || 'Refund request initiated from Enrollments Manager',
+        requestedBy: req.user._id,
+        requestedRole: req.user.role,
+        status: 'PENDING',
+      });
+
+      await AuditLog.create({
+        action: 'REFUND_APPROVAL_QUEUED',
+        resource: 'Enrollment',
+        resourceId: enrollment._id.toString(),
+        category: 'FINANCIAL',
+        isImmutable: true,
+        userId: req.user._id,
+        userEmail: req.user.email,
+        userRole: req.user.role,
+        ipAddress: req.ip || '127.0.0.1',
+        details: `Refund request for ${enrollment.enrollmentId} queued for approval`,
+      });
+
+      return sendSuccess(
+        res,
+        'Refund request submitted for Super Admin / Checker approval.',
+        { approval, approvalPending: true },
+        202
+      );
     }
 
     const oldStatus = enrollment.enrollmentStatus;
@@ -613,6 +676,9 @@ const updateAdminEnrollmentStatus = async (req, res) => {
         { studentId: enrollment.studentId, itemId: enrollment.courseId },
         { isActive: false, status: 'CANCELLED', cancelledAt: new Date() }
       );
+      if (enrollmentStatus === 'CANCELLED') {
+        await reverseReferralReward(enrollment.orderId, enrollment.studentId, 'Enrollment cancelled');
+      }
     } else if (enrollmentStatus === 'REFUNDED') {
       enrollment.paymentStatus = 'REFUNDED';
       enrollment.refundedAt = new Date();
@@ -620,6 +686,7 @@ const updateAdminEnrollmentStatus = async (req, res) => {
         { studentId: enrollment.studentId, itemId: enrollment.courseId },
         { isActive: false, status: 'REFUNDED', refundedAt: new Date() }
       );
+      await reverseReferralReward(enrollment.orderId, enrollment.studentId, 'Enrollment refunded');
     } else if (enrollmentStatus === 'EXPIRED') {
       await Entitlement.updateMany(
         { studentId: enrollment.studentId, itemId: enrollment.courseId },
@@ -684,11 +751,80 @@ const getAdminEnrollmentStats = async (req, res) => {
   }
 };
 
+// Student: Request refund / cancellation for a paid enrollment
+const requestEnrollmentRefund = async (req, res) => {
+  try {
+    const studentId = req.user._id;
+    const { id } = req.params;
+    const { reason } = req.body;
+
+    if (!reason || !String(reason).trim()) {
+      return sendError(res, 'Please provide a reason for your refund / cancellation request.', 400);
+    }
+
+    const enrollment = await Enrollment.findOne({ _id: id, studentId }).populate('courseId', 'title');
+    if (!enrollment) {
+      return sendError(res, 'Enrollment not found', 404);
+    }
+
+    if (!['ENROLLED', 'ACTIVE'].includes(enrollment.enrollmentStatus) || enrollment.paymentStatus !== 'PAID') {
+      return sendError(res, 'Only active paid enrollments are eligible for a refund / cancellation request.', 400);
+    }
+
+    const existingPending = await ApprovalRequest.findOne({
+      requestType: 'REFUND_REQUEST',
+      resourceId: enrollment._id,
+      status: 'PENDING',
+    });
+    if (existingPending) {
+      return sendError(res, 'A refund / cancellation request is already pending review for this enrollment.', 409);
+    }
+
+    const approvalRequest = await ApprovalRequest.create({
+      requestType: 'REFUND_REQUEST',
+      resourceModel: 'Enrollment',
+      resourceId: enrollment._id,
+      targetTitle: `${enrollment.courseId?.title || 'Course'} (${enrollment.enrollmentId})`,
+      payload: {
+        enrollmentId: enrollment.enrollmentId,
+        orderId: enrollment.orderId,
+        amountPaid: enrollment.amountPaid,
+        paymentMode: enrollment.paymentMode,
+        enrolledAt: enrollment.enrolledAt,
+      },
+      reason: String(reason).trim(),
+      requestedBy: studentId,
+      requestedRole: req.user.role || 'STUDENT',
+    });
+
+    await AuditLog.create({
+      userId: studentId,
+      userEmail: req.user.email,
+      userRole: req.user.role || 'STUDENT',
+      action: 'REFUND_REQUEST_SUBMITTED',
+      resource: 'Enrollment',
+      resourceId: enrollment._id.toString(),
+      category: 'FINANCIAL',
+      details: {
+        enrollmentId: enrollment.enrollmentId,
+        amountPaid: enrollment.amountPaid,
+        reason: String(reason).trim(),
+      },
+    });
+
+    return sendSuccess(res, 'Refund / cancellation request submitted for Admin review.', approvalRequest, 201);
+  } catch (error) {
+    console.error('Error submitting refund request:', error);
+    return sendError(res, 'Failed to submit refund request', 500);
+  }
+};
+
 module.exports = {
   createEnrollmentIntent,
   verifyEnrollmentPayment,
   getMyEnrollments,
   getMyEnrollmentById,
+  requestEnrollmentRefund,
   getAdminEnrollments,
   updateAdminEnrollmentStatus,
   getAdminEnrollmentStats,

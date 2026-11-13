@@ -74,7 +74,7 @@ const sendOtpEmail = async (toEmail, otp, purpose = 'REGISTER') => {
         <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #12356B; font-family: monospace;">${otp}</span>
       </div>
       <p style="margin: 18px 0 0; font-size: 12px; color: #475569; line-height: 1.5;">
-        <strong>Valid for 10 minutes.</strong> Never share this OTP with anyone. If you did not request this code, you can safely ignore this email.
+        <strong>Valid for 5 minutes.</strong> Never share this OTP with anyone. If you did not request this code, you can safely ignore this email.
       </p>
     `
   );
@@ -83,7 +83,7 @@ const sendOtpEmail = async (toEmail, otp, purpose = 'REGISTER') => {
     from: `"Ranvi Institutions" <${env.EMAIL_FROM || env.SMTP_USER}>`,
     to: toEmail,
     subject,
-    text: `Your Ranvi Institutions verification OTP is: ${otp}. It is valid for 10 minutes. Never share this code with anyone.`,
+    text: `Your Ranvi Institutions verification OTP is: ${otp}. It is valid for 5 minutes. Never share this code with anyone.`,
     html,
   });
 };

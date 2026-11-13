@@ -55,7 +55,7 @@ export const RegisterPage = () => {
       const res = await authService.sendOtp(formData.email.trim(), 'REGISTER');
       success(res.message || `Verification OTP sent to ${formData.email}`);
       setOtpStep(true);
-      setCooldown(60);
+      setCooldown(30);
     } catch (err) {
       toastError(err.message || 'Could not send verification OTP.');
     } finally {

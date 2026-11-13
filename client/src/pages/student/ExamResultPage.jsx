@@ -19,6 +19,7 @@ import {
 export const ExamResultPage = () => {
   const { attemptId } = useParams();
   const [resultData, setResultData] = useState(null);
+  const [leaderboard, setLeaderboard] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSubjectFilter, setSelectedSubjectFilter] = useState('ALL');
 
@@ -28,13 +29,23 @@ export const ExamResultPage = () => {
         const res = await examService.getAttemptResult(attemptId);
         if (res.success && res.data) {
           setResultData(res.data);
-          // If passed, trigger celebration confetti
-          if (res.data.attempt?.isPassed) {
+          // If passed and not pending, trigger celebration confetti
+          if (!res.data.resultPending && res.data.attempt?.isPassed) {
             confetti({
               particleCount: 80,
               spread: 60,
               origin: { y: 0.6 },
             });
+          }
+          if (!res.data.resultPending && res.data.attempt?.mockTest?._id && res.data.attempt.mockTest.leaderboardEnabled !== false) {
+            try {
+              const lbRes = await examService.getLeaderboard(res.data.attempt.mockTest._id);
+              if (lbRes?.success && lbRes.data?.enabled) {
+                setLeaderboard(lbRes.data);
+              }
+            } catch {
+              // Ignore leaderboard load errors
+            }
           }
         }
       } catch (err) {
@@ -66,7 +77,35 @@ export const ExamResultPage = () => {
     );
   }
 
-  const { attempt, questions } = resultData;
+  const { attempt, questions, resultPending, resultPublishAt } = resultData;
+
+  if (resultPending) {
+    return (
+      <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl p-8 border border-slate-200 shadow-sm text-center space-y-4">
+        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center mx-auto">
+          <Clock className="w-7 h-7" />
+        </div>
+        <h2 className="text-xl font-black text-[#12356B] font-serif">
+          Exam Submitted Successfully
+        </h2>
+        <p className="text-xs text-slate-600 leading-relaxed">
+          Your responses for <strong>{attempt.mockTest?.title}</strong> have been recorded. Results, scorecard, and solutions will be published on{' '}
+          <strong className="text-[#0B2545]">
+            {new Date(resultPublishAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}
+          </strong>.
+        </p>
+        <div className="pt-2">
+          <Link
+            to="/student/mock-tests"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#0B2545] text-white text-xs font-bold hover:bg-[#1E293B]"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to Mock Tests
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   const filteredQuestions = selectedSubjectFilter === 'ALL'
     ? questions
     : questions.filter(q => q.subject === selectedSubjectFilter);
@@ -196,6 +235,52 @@ export const ExamResultPage = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Test Leaderboard */}
+      {leaderboard?.entries?.length > 0 && (
+        <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-xs space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-lg font-bold text-[#12356B] font-heading flex items-center gap-2">
+                <Award className="w-5 h-5 text-[#F4B942]" /> Test Leaderboard (Top {leaderboard.entries.length})
+              </h3>
+              <p className="text-xs text-slate-500 mt-0.5">Ranked by score and completion time.</p>
+            </div>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead className="bg-slate-50 text-slate-500 font-bold border-b border-slate-200">
+                <tr>
+                  <th className="p-3">Rank</th>
+                  <th className="p-3">Student</th>
+                  <th className="p-3">Score</th>
+                  <th className="p-3">Accuracy</th>
+                  <th className="p-3">Time</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {leaderboard.entries.map((entry) => (
+                  <tr
+                    key={`${entry.rank}-${entry.studentCode}`}
+                    className={entry.isCurrentUser ? 'bg-blue-50/70 font-bold' : 'hover:bg-slate-50/70'}
+                  >
+                    <td className="p-3 font-black text-[#0B2545]">#{entry.rank}</td>
+                    <td className="p-3">
+                      <span className="text-slate-900">{entry.studentName}</span>
+                      {entry.isCurrentUser && (
+                        <span className="ml-2 px-1.5 py-0.5 rounded bg-[#1769D2] text-white text-[10px]">You</span>
+                      )}
+                    </td>
+                    <td className="p-3 font-bold text-emerald-700">{entry.score} / {entry.totalMarks}</td>
+                    <td className="p-3">{entry.accuracyPercentage}%</td>
+                    <td className="p-3 font-mono text-slate-600">{formatDuration(entry.timeSpentSeconds)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       )}

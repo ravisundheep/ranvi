@@ -107,6 +107,19 @@ const MockTestSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
   },
+  examMode: {
+    type: String,
+    enum: ['PRACTICE', 'EXAM'],
+    default: 'PRACTICE',
+  },
+  resultPublishAt: {
+    type: Date,
+    default: null,
+  },
+  leaderboardEnabled: {
+    type: Boolean,
+    default: true,
+  },
 }, {
   timestamps: true,
 });

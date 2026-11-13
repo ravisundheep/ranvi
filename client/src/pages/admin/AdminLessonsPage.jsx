@@ -43,7 +43,7 @@ export const AdminLessonsPage = () => {
   useEffect(() => {
     const fetchCourses = async () => {
       try {
-        const res = await courseService.getCourses({ limit: 50 });
+        const res = await courseService.getCourses({ limit: 100, includeUnpublished: 'true', facultyAssigned: 'true' });
         if (res.success && res.data.courses?.length > 0) {
           setCourses(res.data.courses);
           setSelectedCourseId(res.data.courses[0]._id);

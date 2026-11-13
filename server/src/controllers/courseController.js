@@ -2,6 +2,8 @@ const Course = require('../models/Course');
 const Category = require('../models/Category');
 const Entitlement = require('../models/Entitlement');
 const Enrollment = require('../models/Enrollment');
+const ApprovalRequest = require('../models/ApprovalRequest');
+const AuditLog = require('../models/AuditLog');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { broadcastCourseUpdate } = require('../utils/socketService');
 
@@ -36,6 +38,12 @@ const getCourses = async (req, res, next) => {
 
     if (includeUnpublished !== 'true') {
       conditions.push({ isPublished: true });
+    }
+
+    // Faculty scoping: when faculty requests portal/assigned courses, restrict strictly to assignedCourses
+    if (req.user && req.user.role === 'FACULTY' && (includeUnpublished === 'true' || req.query.facultyAssigned === 'true')) {
+      const assignedIds = Array.isArray(req.user.assignedCourses) ? req.user.assignedCourses : [];
+      conditions.push({ _id: { $in: assignedIds } });
     }
 
     if (division) {
@@ -149,7 +157,8 @@ const getCourseBySlug = async (req, res, next) => {
     const query = isObjectId ? { $or: [{ slug }, { _id: slug }] } : { slug };
 
     const isAdmin = req.user && ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role);
-    if (!isAdmin && req.query.includeUnpublished !== 'true') {
+    const isAssignedFaculty = req.user && req.user.role === 'FACULTY';
+    if (!isAdmin && !(isAssignedFaculty && req.query.includeUnpublished === 'true') && req.query.includeUnpublished !== 'true') {
       query.isPublished = true;
     }
 
@@ -158,6 +167,13 @@ const getCourseBySlug = async (req, res, next) => {
 
     if (!course) {
       return sendError(res, 'Course not found', 404);
+    }
+
+    if (isAssignedFaculty && req.query.includeUnpublished === 'true') {
+      const assignedIds = Array.isArray(req.user.assignedCourses) ? req.user.assignedCourses.map(String) : [];
+      if (!course.isPublished && !assignedIds.includes(String(course._id))) {
+        return sendError(res, 'Forbidden: Course is not assigned to your faculty account', 403);
+      }
     }
 
     let isEnrolled = false;
@@ -413,17 +429,72 @@ const createCourse = async (req, res, next) => {
   }
 };
 
-// Admin: Update course
+// Admin: Update course (fee/discount mutations by non-SUPER_ADMIN require Maker-Checker Approval)
 const updateCourse = async (req, res, next) => {
   try {
     const { id } = req.params;
     const query = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { slug: id };
-    const course = await Course.findOneAndUpdate(query, req.body, { new: true, runValidators: true });
-    if (!course) {
+    const existingCourse = await Course.findOne(query);
+    if (!existingCourse) {
       return sendError(res, 'Course not found', 404);
     }
+
+    const updateBody = { ...req.body };
+    let approvalQueued = false;
+
+    const feeChanged =
+      updateBody.fee !== undefined && Number(updateBody.fee) !== Number(existingCourse.fee);
+    const originalPriceChanged =
+      updateBody.originalPrice !== undefined &&
+      Number(updateBody.originalPrice) !== Number(existingCourse.originalPrice);
+
+    if ((feeChanged || originalPriceChanged) && req.user.role !== 'SUPER_ADMIN') {
+      const approvalPayload = {};
+      if (feeChanged) approvalPayload.fee = Number(updateBody.fee);
+      if (originalPriceChanged) approvalPayload.originalPrice = Number(updateBody.originalPrice);
+
+      await ApprovalRequest.create({
+        requestType: feeChanged ? 'FEE_CHANGE' : 'DISCOUNT_OVERRIDE',
+        resourceModel: 'Course',
+        resourceId: existingCourse._id,
+        targetTitle: existingCourse.title,
+        payload: approvalPayload,
+        reason: updateBody.approvalReason || 'Course fee/discount modification submitted from Course Editor',
+        requestedBy: req.user._id,
+        requestedRole: req.user.role,
+        status: 'PENDING',
+      });
+
+      await AuditLog.create({
+        userId: req.user._id,
+        userEmail: req.user.email,
+        userRole: req.user.role,
+        action: 'COURSE_FEE_APPROVAL_QUEUED',
+        resource: 'Course',
+        resourceId: existingCourse._id.toString(),
+        category: 'FINANCIAL',
+        isImmutable: true,
+        details: { courseTitle: existingCourse.title, ...approvalPayload },
+        ipAddress: req.ip || '',
+      });
+
+      delete updateBody.fee;
+      delete updateBody.originalPrice;
+      approvalQueued = true;
+    }
+
+    const course = await Course.findOneAndUpdate(query, updateBody, { new: true, runValidators: true });
     invalidateCourseServerCache();
     broadcastCourseUpdate('UPDATE', course);
+
+    if (approvalQueued) {
+      return sendSuccess(
+        res,
+        'Course updated, and fee/discount change has been queued for Super Admin approval.',
+        { course, approvalPending: true }
+      );
+    }
+
     return sendSuccess(res, 'Course updated successfully', course);
   } catch (error) {
     next(error);

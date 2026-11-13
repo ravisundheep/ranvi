@@ -53,6 +53,9 @@ export const AdminMockTestsPage = () => {
     solutionPdfName: '',
     maxAttempts: 0,
     negativeMarkingEnabled: true,
+    examMode: 'PRACTICE',
+    resultPublishAt: '',
+    leaderboardEnabled: true,
   });
 
   const [uploadForm, setUploadForm] = useState({
@@ -78,8 +81,8 @@ export const AdminMockTestsPage = () => {
   const fetchTests = async () => {
     try {
       const [testRes, courseRes] = await Promise.all([
-        examService.getMockTests({ limit: 50 }),
-        courseService.getCourses({ limit: 50 }),
+        examService.getMockTests({ limit: 50, includeUnpublished: 'true' }),
+        courseService.getCourses({ limit: 100, includeUnpublished: 'true', facultyAssigned: 'true' }),
       ]);
       if (testRes.success && testRes.data) {
         setTests(testRes.data.tests || []);
@@ -121,6 +124,9 @@ export const AdminMockTestsPage = () => {
       solutionPdfName: '',
       maxAttempts: 0,
       negativeMarkingEnabled: true,
+      examMode: 'PRACTICE',
+      resultPublishAt: '',
+      leaderboardEnabled: true,
     });
     setShowAddModal(true);
   };
@@ -166,6 +172,9 @@ export const AdminMockTestsPage = () => {
       solutionPdfName: test.solutionPdfName || '',
       maxAttempts: test.maxAttempts !== undefined ? test.maxAttempts : 0,
       negativeMarkingEnabled: test.negativeMarkingEnabled !== undefined ? test.negativeMarkingEnabled : true,
+      examMode: test.examMode || 'PRACTICE',
+      resultPublishAt: test.resultPublishAt ? new Date(test.resultPublishAt).toISOString().slice(0, 16) : '',
+      leaderboardEnabled: test.leaderboardEnabled !== undefined ? test.leaderboardEnabled : true,
     });
     setShowAddModal(true);
   };
@@ -1044,6 +1053,48 @@ export const AdminMockTestsPage = () => {
                       className="rounded text-[#1769D2]"
                     />
                     <span>Enable Negative Marking</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-blue-50/50 p-3.5 rounded-2xl border border-blue-100">
+                <div>
+                  <label className="block font-bold text-slate-700 mb-1">Exam Mode</label>
+                  <select
+                    value={testForm.examMode}
+                    onChange={(e) => setTestForm({ ...testForm, examMode: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                  >
+                    <option value="PRACTICE">Practice Mode (Instant Result)</option>
+                    <option value="EXAM">Formal Exam Mode (Scheduled Result)</option>
+                  </select>
+                </div>
+
+                {testForm.examMode === 'EXAM' ? (
+                  <div>
+                    <label className="block font-bold text-slate-700 mb-1">Result Publish Date &amp; Time</label>
+                    <input
+                      type="datetime-local"
+                      value={testForm.resultPublishAt}
+                      onChange={(e) => setTestForm({ ...testForm, resultPublishAt: e.target.value })}
+                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex items-end pb-2">
+                    <span className="text-[11px] text-slate-500">Results &amp; solutions appear immediately after submission.</span>
+                  </div>
+                )}
+
+                <div className="sm:col-span-2 pt-1">
+                  <label className="flex items-center gap-2 cursor-pointer font-bold text-[#12356B]">
+                    <input
+                      type="checkbox"
+                      checked={testForm.leaderboardEnabled}
+                      onChange={(e) => setTestForm({ ...testForm, leaderboardEnabled: e.target.checked })}
+                      className="rounded text-[#1769D2]"
+                    />
+                    <span>Enable Student Leaderboard (Top 20 Ranks)</span>
                   </label>
                 </div>
               </div>

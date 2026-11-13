@@ -1,7 +1,14 @@
 const User = require('../models/User');
 const ApprovalRequest = require('../models/ApprovalRequest');
 const AuditLog = require('../models/AuditLog');
+const Course = require('../models/Course');
+const MockTest = require('../models/MockTest');
+const Enrollment = require('../models/Enrollment');
+const Entitlement = require('../models/Entitlement');
+const PayoutRequest = require('../models/PayoutRequest');
+const WalletTransaction = require('../models/WalletTransaction');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
+const { reverseReferralReward } = require('./walletController');
 const { emitAdminStatsUpdate } = require('../utils/socketService');
 
 const STAFF_ROLES = ['ADMIN', 'FACULTY', 'SUPPORT_STAFF', 'FINANCE_STAFF', 'SUPER_ADMIN'];
@@ -312,6 +319,79 @@ const reviewApprovalRequest = async (req, res, next) => {
     approval.reviewedNote = reviewedNote ? reviewedNote.trim() : '';
     approval.reviewedAt = new Date();
     await approval.save();
+
+    // Execute approved business mutation atomically
+    if (decision === 'APPROVED') {
+      const p = approval.payload || {};
+      if (approval.requestType === 'FEE_CHANGE' || approval.requestType === 'DISCOUNT_OVERRIDE') {
+        const feePatch = {};
+        if (p.fee !== undefined) feePatch.fee = Number(p.fee);
+        if (p.originalPrice !== undefined) feePatch.originalPrice = Number(p.originalPrice);
+        if (p.price !== undefined) feePatch.price = Number(p.price);
+
+        if (approval.resourceModel === 'Course' && Object.keys(feePatch).length > 0) {
+          await Course.findByIdAndUpdate(approval.resourceId, feePatch, { new: true });
+        } else if (approval.resourceModel === 'MockTest' && Object.keys(feePatch).length > 0) {
+          await MockTest.findByIdAndUpdate(approval.resourceId, feePatch, { new: true });
+        }
+      } else if (approval.requestType === 'REFUND_REQUEST' && approval.resourceModel === 'Enrollment') {
+        const enrollment = await Enrollment.findById(approval.resourceId);
+        if (enrollment) {
+          enrollment.enrollmentStatus = 'REFUNDED';
+          enrollment.paymentStatus = 'REFUNDED';
+          enrollment.refundedAt = new Date();
+          if (approval.reviewedNote) enrollment.notes = approval.reviewedNote;
+          await enrollment.save();
+
+          await Entitlement.updateMany(
+            { studentId: enrollment.studentId, itemId: enrollment.courseId },
+            { isActive: false, status: 'REFUNDED', refundedAt: new Date() }
+          );
+          await reverseReferralReward(enrollment.orderId, enrollment.studentId, 'Approved refund request');
+        }
+      } else if (approval.requestType === 'REFERRAL_PAYOUT' && approval.resourceModel === 'PayoutRequest') {
+        await PayoutRequest.findByIdAndUpdate(approval.resourceId, {
+          status: 'APPROVED',
+          adminNote: approval.reviewedNote || 'Approved via Maker-Checker Approvals Queue',
+        });
+      } else if (approval.requestType === 'REFERRAL_REWARD_ADJUSTMENT' && approval.resourceModel === 'User') {
+        const delta = Number(p.amount || 0);
+        if (delta !== 0) {
+          const targetStudent = await User.findById(approval.resourceId);
+          if (targetStudent) {
+            targetStudent.walletBalance = Math.max(0, (targetStudent.walletBalance || 0) + delta);
+            await targetStudent.save();
+            await WalletTransaction.create({
+              transactionId: `WTX-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`,
+              userId: targetStudent._id,
+              type: delta >= 0 ? 'CREDIT' : 'DEBIT',
+              source: 'ADMIN_ADJUSTMENT',
+              amount: Math.abs(delta),
+              balanceAfter: targetStudent.walletBalance,
+              description: approval.reason || 'Approved referral reward adjustment',
+              status: 'COMPLETED',
+            });
+          }
+        }
+      } else if (approval.requestType === 'MANUAL_ENTITLEMENT' && p.studentId && p.itemId) {
+        const validUntil = new Date();
+        validUntil.setDate(validUntil.getDate() + Number(p.validityDays || 180));
+        await Entitlement.findOneAndUpdate(
+          { studentId: p.studentId, itemId: p.itemId },
+          {
+            studentId: p.studentId,
+            itemType: p.itemType || 'COURSE',
+            itemId: p.itemId,
+            itemModel: p.itemModel || 'Course',
+            isActive: true,
+            status: 'ACTIVE',
+            validUntil,
+            grantedBy: req.user._id,
+          },
+          { upsert: true, new: true }
+        );
+      }
+    }
 
     await AuditLog.create({
       userId: req.user._id,

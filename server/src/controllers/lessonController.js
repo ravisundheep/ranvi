@@ -18,6 +18,11 @@ const getCourseLessons = async (req, res, next) => {
     if (req.user) {
       if (['SUPER_ADMIN', 'ADMIN'].includes(req.user.role)) {
         isEnrolled = true;
+      } else if (req.user.role === 'FACULTY') {
+        if (!assertFacultyCourseAccess(req.user, courseId)) {
+          return sendError(res, 'Forbidden: Faculty may only access lessons for their assigned courses.', 403);
+        }
+        isEnrolled = true;
       } else {
         const activeEntitlement = await Entitlement.findOne({
           studentId: req.user._id,
@@ -220,14 +225,18 @@ const updateLesson = async (req, res, next) => {
   }
 };
 
-// Admin: Delete lesson
+// Admin / Assigned Faculty: Delete lesson
 const deleteLesson = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const lesson = await Lesson.findByIdAndDelete(id);
-    if (!lesson) {
+    const existing = await Lesson.findById(id);
+    if (!existing) {
       return sendError(res, 'Lesson not found', 404);
     }
+    if (!assertFacultyCourseAccess(req.user, existing.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only delete lessons in their assigned courses.', 403);
+    }
+    await Lesson.findByIdAndDelete(id);
     return sendSuccess(res, 'Lesson deleted successfully');
   } catch (error) {
     next(error);

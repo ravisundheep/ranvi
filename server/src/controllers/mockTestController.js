@@ -6,15 +6,38 @@ const Entitlement = require('../models/Entitlement');
 const { sendSuccess, sendError } = require('../utils/responseHelper');
 const { attachMediaTokenIfLocal } = require('../middleware/protectedMedia');
 
+const assertFacultyCourseAccess = (user, courseId) => {
+  if (!user || user.role !== 'FACULTY') return true;
+  const assigned = Array.isArray(user.assignedCourses) ? user.assignedCourses.map(String) : [];
+  if (assigned.length === 0 || !courseId) return false;
+  return assigned.includes(String(courseId));
+};
+
 // Public/Student: Get list of mock tests
 const getMockTests = async (req, res, next) => {
   try {
     const { division, courseId, isDemoFree, search, page = 1, limit = 20 } = req.query;
     const isAdmin = req.user && ['SUPER_ADMIN', 'ADMIN'].includes(req.user.role);
-    const query = isAdmin && req.query.includeUnpublished === 'true' ? {} : { isPublished: true };
+    const isFacultyPortal = req.user && req.user.role === 'FACULTY' && req.query.includeUnpublished === 'true';
+    const query = (isAdmin || isFacultyPortal) && req.query.includeUnpublished === 'true' ? {} : { isPublished: true };
 
     if (division && division !== 'ALL') query.division = division.toUpperCase();
-    if (courseId) query.courseId = courseId;
+    if (isFacultyPortal) {
+      const assigned = Array.isArray(req.user.assignedCourses) ? req.user.assignedCourses.map(String) : [];
+      if (courseId) {
+        if (!assigned.includes(String(courseId))) {
+          return sendSuccess(res, 'Mock tests retrieved', {
+            tests: [],
+            pagination: { total: 0, page: 1, pages: 1 },
+          });
+        }
+        query.courseId = courseId;
+      } else {
+        query.courseId = { $in: assigned };
+      }
+    } else if (courseId) {
+      query.courseId = courseId;
+    }
     if (isDemoFree !== undefined) query.isDemoFree = isDemoFree === 'true';
     if (search && search.trim()) {
       const escaped = search.trim().replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -141,9 +164,15 @@ const createMockTest = async (req, res, next) => {
       instructions,
       maxAttempts,
       negativeMarkingEnabled,
+      examMode,
+      resultPublishAt,
+      leaderboardEnabled,
     } = req.body;
 
     const testSlug = slug || title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+    if (!assertFacultyCourseAccess(req.user, courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only create mock tests for their assigned courses.', 403);
+    }
     const existing = await MockTest.findOne({ slug: testSlug });
     if (existing) {
       return sendError(res, 'A mock test with this slug already exists', 400);
@@ -169,6 +198,9 @@ const createMockTest = async (req, res, next) => {
       solutionPdfName: req.body.solutionPdfName || '',
       maxAttempts: maxAttempts !== undefined ? Number(maxAttempts) : 0,
       negativeMarkingEnabled: negativeMarkingEnabled !== undefined ? Boolean(negativeMarkingEnabled) : true,
+      examMode: examMode === 'EXAM' ? 'EXAM' : 'PRACTICE',
+      resultPublishAt: examMode === 'EXAM' && resultPublishAt ? new Date(resultPublishAt) : null,
+      leaderboardEnabled: leaderboardEnabled !== undefined ? Boolean(leaderboardEnabled) : true,
       instructions: instructions || [
         'Each question has four options with only one correct response.',
         'Negative marks apply for incorrect answers.',
@@ -183,11 +215,19 @@ const createMockTest = async (req, res, next) => {
   }
 };
 
-// Admin: Add single question
+// Admin / Assigned Faculty: Add single question
 const addQuestion = async (req, res, next) => {
   try {
     const { mockTestId } = req.params;
     const { questionText, questionImage, options, marks, negativeMarks, explanation, subject, topic, sortOrder } = req.body;
+
+    const parentTest = await MockTest.findById(mockTestId);
+    if (!parentTest) {
+      return sendError(res, 'Mock test not found', 404);
+    }
+    if (!assertFacultyCourseAccess(req.user, parentTest.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only manage questions for their assigned courses.', 403);
+    }
 
     if (!questionText || !options || options.length < 2) {
       return sendError(res, 'Question text and at least 2 options are required', 400);
@@ -221,10 +261,17 @@ const addQuestion = async (req, res, next) => {
   }
 };
 
-// Admin: Get questions for a mock test (with answer keys for editing)
+// Admin / Assigned Faculty: Get questions for a mock test (with answer keys for editing)
 const getAdminMockTestQuestions = async (req, res, next) => {
   try {
     const { mockTestId } = req.params;
+    const parentTest = await MockTest.findById(mockTestId);
+    if (!parentTest) {
+      return sendError(res, 'Mock test not found', 404);
+    }
+    if (!assertFacultyCourseAccess(req.user, parentTest.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only view questions for their assigned courses.', 403);
+    }
     const questions = await Question.find({ mockTestId }).sort({ sortOrder: 1, createdAt: 1 });
     return sendSuccess(res, 'Questions retrieved', questions);
   } catch (error) {
@@ -232,10 +279,18 @@ const getAdminMockTestQuestions = async (req, res, next) => {
   }
 };
 
-// Admin: Delete question
+// Admin / Assigned Faculty: Delete question
 const deleteQuestion = async (req, res, next) => {
   try {
     const { questionId } = req.params;
+    const existingQ = await Question.findById(questionId);
+    if (!existingQ) {
+      return sendError(res, 'Question not found', 404);
+    }
+    const parentTest = await MockTest.findById(existingQ.mockTestId);
+    if (!assertFacultyCourseAccess(req.user, parentTest?.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only delete questions for their assigned courses.', 403);
+    }
     const question = await Question.findByIdAndDelete(questionId);
     if (!question) {
       return sendError(res, 'Question not found', 404);
@@ -248,15 +303,20 @@ const deleteQuestion = async (req, res, next) => {
   }
 };
 
-// Admin: Update Mock Test
+// Admin / Assigned Faculty: Update Mock Test
 const updateMockTest = async (req, res, next) => {
   try {
     const { id } = req.params;
     const query = id.match(/^[0-9a-fA-F]{24}$/) ? { _id: id } : { slug: id };
-    const mockTest = await MockTest.findOneAndUpdate(query, req.body, { new: true, runValidators: true });
-    if (!mockTest) {
+    const existing = await MockTest.findOne(query);
+    if (!existing) {
       return sendError(res, 'Mock test not found', 404);
     }
+    const targetCourseId = req.body.courseId || existing.courseId;
+    if (!assertFacultyCourseAccess(req.user, existing.courseId) || !assertFacultyCourseAccess(req.user, targetCourseId)) {
+      return sendError(res, 'Forbidden: Faculty may only update mock tests for their assigned courses.', 403);
+    }
+    const mockTest = await MockTest.findOneAndUpdate(query, req.body, { new: true, runValidators: true });
     return sendSuccess(res, 'Mock test updated successfully', mockTest);
   } catch (error) {
     next(error);
@@ -280,14 +340,19 @@ const deleteMockTest = async (req, res, next) => {
   }
 };
 
-// Admin: Update Question
+// Admin / Assigned Faculty: Update Question
 const updateQuestion = async (req, res, next) => {
   try {
     const { questionId } = req.params;
-    const question = await Question.findByIdAndUpdate(questionId, req.body, { new: true, runValidators: true });
-    if (!question) {
+    const existingQ = await Question.findById(questionId);
+    if (!existingQ) {
       return sendError(res, 'Question not found', 404);
     }
+    const parentTest = await MockTest.findById(existingQ.mockTestId);
+    if (!assertFacultyCourseAccess(req.user, parentTest?.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only update questions for their assigned courses.', 403);
+    }
+    const question = await Question.findByIdAndUpdate(questionId, req.body, { new: true, runValidators: true });
     return sendSuccess(res, 'Question updated successfully', question);
   } catch (error) {
     next(error);
@@ -321,6 +386,10 @@ const uploadMockTestPaper = async (req, res, next) => {
 
     if (!title || !division) {
       return sendError(res, 'Title and division are required for mock test paper', 400);
+    }
+
+    if (!assertFacultyCourseAccess(req.user, courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only upload mock test papers for their assigned courses.', 403);
     }
 
     const testSlug = slug || `${title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')}-${Date.now().toString().slice(-4)}`;
@@ -395,6 +464,9 @@ const bulkUploadQuestions = async (req, res, next) => {
     const mockTest = await MockTest.findById(mockTestId);
     if (!mockTest) {
       return sendError(res, 'Mock test not found', 404);
+    }
+    if (!assertFacultyCourseAccess(req.user, mockTest.courseId)) {
+      return sendError(res, 'Forbidden: Faculty may only import questions for their assigned courses.', 403);
     }
 
     const existingCount = await Question.countDocuments({ mockTestId });
